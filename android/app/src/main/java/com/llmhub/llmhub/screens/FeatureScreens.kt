@@ -216,9 +216,7 @@ fun TranslatorScreen(
     viewModel: TranslatorViewModel = viewModel()
 ) {
     val context = LocalContext.current
-    val activity = context as ComponentActivity
     val isPremium by (context.applicationContext as LlmHubApplication).billingManager.isPremium.collectAsState(initial = false)
-    val rewardedAdManager = remember { (context.applicationContext as LlmHubApplication).rewardedAdManager }
     val coroutineScope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
     
@@ -476,11 +474,7 @@ fun TranslatorScreen(
                     onModelSelected = { viewModel.selectModel(it) },
                     onBackendSelected = { backend, deviceId -> viewModel.selectBackend(backend, deviceId) },
                     onLoadModel = {
-                        if (isPremium) {
-                            viewModel.loadModel()
-                        } else {
-                            rewardedAdManager.showAdOrGrant(activity) { viewModel.loadModel() }
-                        }
+                        viewModel.loadModel()
                     },
                     onUnloadModel = { viewModel.unloadModel() },
                     filterMultimodalOnly = true,
@@ -1451,9 +1445,7 @@ fun TranscriberScreen(
     
     // Audio recording components (same as Translator)
     val context = LocalContext.current
-    val activity = context as ComponentActivity
     val isPremium by (context.applicationContext as LlmHubApplication).billingManager.isPremium.collectAsState(initial = false)
-    val rewardedAdManager = remember { (context.applicationContext as LlmHubApplication).rewardedAdManager }
     val coroutineScope = rememberCoroutineScope()
     val audioService = remember { AudioInputService(context) }
     var recordedAudioData by remember { mutableStateOf<ByteArray?>(null) }
@@ -1936,11 +1928,7 @@ fun TranscriberScreen(
                     onModelSelected = { viewModel.selectModel(it) },
                     onBackendSelected = { backend, deviceId -> viewModel.selectBackend(backend, deviceId) },
                     onLoadModel = {
-                        if (isPremium) {
-                            viewModel.loadModel()
-                        } else {
-                            rewardedAdManager.showAdOrGrant(activity) { viewModel.loadModel() }
-                        }
+                        viewModel.loadModel()
                     },
                     onUnloadModel = { viewModel.unloadModel() },
                     filterMultimodalOnly = true

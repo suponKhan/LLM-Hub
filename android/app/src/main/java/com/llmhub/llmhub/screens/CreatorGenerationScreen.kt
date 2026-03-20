@@ -31,7 +31,6 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
-import androidx.activity.ComponentActivity
 import android.graphics.Rect
 import android.view.ViewTreeObserver
 import com.llmhub.llmhub.LlmHubApplication
@@ -73,9 +72,6 @@ fun CreatorGenerationScreen(
     
     // Ad gating for free users
     val context = LocalContext.current
-    val activity = context as ComponentActivity
-    val isPremium by (context.applicationContext as LlmHubApplication).billingManager.isPremium.collectAsState(initial = false)
-    val rewardedAdManager = remember { (context.applicationContext as LlmHubApplication).rewardedAdManager }
 
     // Detect keyboard (IME) visibility
     val view = LocalView.current
@@ -419,11 +415,7 @@ fun CreatorGenerationScreen(
                 if (backend != null) viewModel.selectBackend(backend, deviceId)
                 viewModel.setNGpuLayers(nGpuLayers)
                 viewModel.setEnableThinking(enableThinking)
-                if (isPremium) {
-                    viewModel.loadModel()
-                } else {
-                    rewardedAdManager.showAdOrGrant(activity) { viewModel.loadModel() }
-                }
+                viewModel.loadModel()
             },
             onUnloadModel = { viewModel.unloadModel() },
             onDismiss = { showSettingsSheet = false }

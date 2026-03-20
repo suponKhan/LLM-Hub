@@ -26,7 +26,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.activity.ComponentActivity
 import com.llmhub.llmhub.LlmHubApplication
 import com.llmhub.llmhub.ads.BannerAd
 import com.llmhub.llmhub.R
@@ -45,9 +44,7 @@ fun WritingAidScreen(
     viewModel: WritingAidViewModel = viewModel()
 ) {
     val context = LocalContext.current
-    val activity = context as ComponentActivity
     val isPremium by (context.applicationContext as LlmHubApplication).billingManager.isPremium.collectAsState(initial = false)
-    val rewardedAdManager = remember { (context.applicationContext as LlmHubApplication).rewardedAdManager }
     val keyboard = LocalSoftwareKeyboardController.current
     val clipboardManager = LocalClipboardManager.current
     
@@ -152,11 +149,7 @@ fun WritingAidScreen(
                     onModelSelected = { viewModel.selectModel(it) },
                     onBackendSelected = { backend, deviceId -> viewModel.selectBackend(backend, deviceId) },
                     onLoadModel = {
-                        if (isPremium) {
-                            viewModel.loadModel()
-                        } else {
-                            rewardedAdManager.showAdOrGrant(activity) { viewModel.loadModel() }
-                        }
+                        viewModel.loadModel()
                     },
                     onUnloadModel = { viewModel.unloadModel() },
                     filterMultimodalOnly = false,
