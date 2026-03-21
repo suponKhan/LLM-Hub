@@ -383,25 +383,35 @@ private struct MarkdownMessageText: View {
     let text: String
 
     var body: some View {
-        let markdownWithBreaks = text.replacingOccurrences(of: "\n", with: "  \n")
-        if let attributed = try? AttributedString(
-            markdown: markdownWithBreaks,
-            options: .init(
-                interpretedSyntax: .full,
-                failurePolicy: .returnPartiallyParsedIfPossible
-            )
-        ) {
-            Text(attributed)
-                .font(.body)
-                .lineSpacing(4)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .textSelection(.enabled)
-        } else {
-            Text(text)
-                .font(.body)
-                .lineSpacing(4)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .textSelection(.enabled)
+        let normalizedText = text.replacingOccurrences(of: "\\n", with: "\n")
+        let lines = normalizedText.components(separatedBy: "\n")
+
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(Array(lines.enumerated()), id: \.offset) { indexedLine in
+                let line = indexedLine.element
+                if line.isEmpty {
+                    Color.clear
+                        .frame(height: 10)
+                } else if let attributed = try? AttributedString(
+                    markdown: line,
+                    options: .init(
+                        interpretedSyntax: .full,
+                        failurePolicy: .returnPartiallyParsedIfPossible
+                    )
+                ) {
+                    Text(attributed)
+                        .font(.body)
+                        .lineSpacing(4)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .textSelection(.enabled)
+                } else {
+                    Text(line)
+                        .font(.body)
+                        .lineSpacing(4)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .textSelection(.enabled)
+                }
+            }
         }
     }
 }
