@@ -101,6 +101,44 @@ class LLMBackend: ObservableObject {
         return json
     }
 
+    private func validateGemma3nMultimodalWeights(model: AIModel, modelDir: URL) throws {
+        guard model.name.localizedCaseInsensitiveContains("Gemma-3n") else { return }
+
+        let indexURL = modelDir.appendingPathComponent("model.safetensors.index.json")
+        guard
+            let json = loadJSON(at: indexURL),
+            let weightMap = json["weight_map"] as? [String: Any]
+        else {
+            return
+        }
+
+        let keys = weightMap.keys
+        let hasAudioTower = keys.contains { $0.hasPrefix("model.audio_tower.") }
+        let hasVisionTower = keys.contains { $0.hasPrefix("model.vision_tower.") || $0.hasPrefix("model.embed_vision.") }
+
+        if model.supportsAudio && !hasAudioTower {
+            throw NSError(
+                domain: "LLMBackend",
+                code: 422,
+                userInfo: [
+                    NSLocalizedDescriptionKey:
+                        "Gemma-3n files are not the full multimodal weights (audio tower missing). Delete this model and re-download from the current model card."
+                ]
+            )
+        }
+
+        if model.supportsVision && !hasVisionTower {
+            throw NSError(
+                domain: "LLMBackend",
+                code: 422,
+                userInfo: [
+                    NSLocalizedDescriptionKey:
+                        "Gemma-3n files are not the full multimodal weights (vision tower missing). Delete this model and re-download from the current model card."
+                ]
+            )
+        }
+    }
+
     private func resolveContextWindowSize(modelDir: URL) -> Int {
         let candidateFiles = [
             "config.json",
@@ -199,6 +237,8 @@ class LLMBackend: ObservableObject {
     func loadModel(_ model: AIModel) async throws {
         isBackendLoading = true
         defer { isBackendLoading = false }
+
+        print("[LLMBackend] loadModel name=\(model.name) visionEnabled=\(enableVision) audioEnabled=\(enableAudio)")
         
         let fileManager = FileManager.default
         let documentsDir = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
@@ -212,6 +252,8 @@ class LLMBackend: ObservableObject {
                 throw NSError(domain: "LLMBackend", code: 404, userInfo: [NSLocalizedDescriptionKey: "Missing model file: \(file)"])
             }
         }
+
+        try validateGemma3nMultimodalWeights(model: model, modelDir: modelDir)
         
         // 2. Load with MLX LLM
         var modelConfiguration = ModelConfiguration(
@@ -221,7 +263,23 @@ class LLMBackend: ObservableObject {
         modelConfiguration.extraEOSTokens.formUnion(stopMarkers)
         let hub = HubApi()
         let factory = LLMModelFactory.shared
-        self.modelContainer = try await factory.loadContainer(hub: hub, configuration: modelConfiguration)
+        do {
+            self.modelContainer = try await factory.loadContainer(hub: hub, configuration: modelConfiguration)
+        } catch {
+            let description = String(describing: error)
+            print("[LLMBackend] loadModel rawError=\(description)")
+            if description.contains("altup_unembed_projections") || description.contains("keyNotFound(path") {
+                throw NSError(
+                    domain: "LLMBackend",
+                    code: 422,
+                    userInfo: [
+                        NSLocalizedDescriptionKey:
+                            "Model files are incomplete/corrupted or incompatible with current MLX runtime. Delete this model and download again. (\(description))"
+                    ]
+                )
+            }
+            throw error
+        }
         self.currentContextWindowSize = max(512, resolveContextWindowSize(modelDir: modelDir))
         
         isLoaded = true
@@ -234,12 +292,34 @@ class LLMBackend: ObservableObject {
         currentlyLoadedModel = nil
     }
     
-    func generate(prompt: String, onUpdate: @escaping (String, Int, Double) -> Void) async throws {
+    func generate(
+        prompt: String,
+        imageURL: URL? = nil,
+        audioURL: URL? = nil,
+        onUpdate: @escaping (String, Int, Double) -> Void
+    ) async throws {
         guard let container = self.modelContainer else { 
             throw NSError(domain: "LLMBackend", code: 403, userInfo: [NSLocalizedDescriptionKey: "Model not loaded"]) 
         }
-        
-        let input = try await container.prepare(input: UserInput(prompt: prompt))
+
+        var images: [UserInput.Image] = []
+        var videos: [UserInput.Video] = []
+
+        if enableVision, let imageURL {
+            images.append(.url(imageURL))
+        }
+        if enableAudio, let audioURL {
+            // MLX UserInput exposes media as videos for AVAsset-backed processing.
+            videos.append(.url(audioURL))
+        }
+
+        print(
+            "[LLMBackend] generate visionEnabled=\(enableVision) audioEnabled=\(enableAudio) images=\(images.count) videos=\(videos.count)"
+        )
+
+        let input = try await container.prepare(
+            input: UserInput(prompt: prompt, images: images, videos: videos)
+        )
         // Respect the user setting, with model max context as the only ceiling.
         let modelContextCeiling = max(32, self.currentContextWindowSize)
         let effectiveMaxTokens = max(32, min(self.maxTokens, modelContextCeiling))

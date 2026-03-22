@@ -1,5 +1,7 @@
 import Foundation
+import PhotosUI
 import SwiftUI
+import UniformTypeIdentifiers
 
 // MARK: - Chat ViewModel
 @MainActor
@@ -71,6 +73,8 @@ class ChatViewModel: ObservableObject {
     var loadedModelName: String? { llmBackend.currentlyLoadedModel }
 
     func loadModelIfNecessary(force: Bool = false) async {
+        syncBackendSettings()
+
         guard selectedModelName != AppSettings.shared.localized("no_model_selected") else { return }
         if !force && llmBackend.currentlyLoadedModel == selectedModelName { return }
         
@@ -79,7 +83,14 @@ class ChatViewModel: ObservableObject {
         isBackendLoading = true
         defer { isBackendLoading = false }
         
-        // Push parameters to backend
+        do {
+            try await llmBackend.loadModel(model)
+        } catch {
+            print("Failed to load model: \(error)")
+        }
+    }
+
+    private func syncBackendSettings() {
         llmBackend.maxTokens = Int(maxTokens)
         llmBackend.topK = Int(topK)
         llmBackend.topP = Float(topP)
@@ -88,12 +99,6 @@ class ChatViewModel: ObservableObject {
         llmBackend.enableAudio = enableAudio
         llmBackend.enableThinking = enableThinking
         llmBackend.selectedBackend = selectedBackend
-        
-        do {
-            try await llmBackend.loadModel(model)
-        } catch {
-            print("Failed to load model: \(error)")
-        }
     }
 
     func unloadModel() {
@@ -101,18 +106,25 @@ class ChatViewModel: ObservableObject {
         llmBackend.currentlyLoadedModel = nil
     }
 
-    func sendMessage() {
-        let input = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !input.isEmpty else { return }
-        guard !isGenerating else { return }
+    @discardableResult
+    func sendMessage(imageURL: URL? = nil, audioURL: URL? = nil) -> Bool {
+        let selectedModel = ModelData.models.first(where: { $0.name == selectedModelName })
+        let effectiveImageURL = (enableVision && selectedModel?.supportsVision == true) ? imageURL : nil
+        let effectiveAudioURL = (enableAudio && selectedModel?.supportsAudio == true) ? audioURL : nil
 
-        let userMsg = ChatMessage(content: input, isFromUser: true)
+        let input = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasAttachment = effectiveImageURL != nil || effectiveAudioURL != nil
+        guard !input.isEmpty || hasAttachment else { return false }
+        guard !isGenerating else { return false }
+
+        let userText = input.isEmpty ? "[Attachment]" : input
+        let userMsg = ChatMessage(content: userText, isFromUser: true)
         messages.append(userMsg)
         inputText = ""
 
         // Auto-update title if it's "New Chat"
         if currentTitle == AppSettings.shared.localized("drawer_new_chat") {
-            currentTitle = String(input.prefix(20))
+            currentTitle = String(userText.prefix(20))
         }
 
         let aiMsg = ChatMessage(content: "", isFromUser: false, isGenerating: true)
@@ -132,7 +144,7 @@ class ChatViewModel: ObservableObject {
                     return
                 }
                 
-                try await llmBackend.generate(prompt: input) { [weak self] content, tokens, tps in
+                try await llmBackend.generate(prompt: userText, imageURL: effectiveImageURL, audioURL: effectiveAudioURL) { [weak self] content, tokens, tps in
                     Task { @MainActor [weak self] in
                         guard let self = self else { return }
                         self.updateLastAIMessageSync(content: content, tokens: tokens, tps: tps)
@@ -148,6 +160,8 @@ class ChatViewModel: ObservableObject {
                 self.activeGeneratingMessageId = nil
             }
         }
+
+        return true
     }
 
     private func updateLastAIMessage(content: String, isGenerating: Bool) async {
@@ -422,6 +436,10 @@ struct MessageBubble: View {
 
             if !isEditing && !message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 HStack(spacing: 8) {
+                    if message.isFromUser {
+                        Spacer()
+                    }
+
                     Button(action: onCopy) {
                         Image(systemName: "doc.on.doc")
                     }
@@ -458,12 +476,11 @@ struct MessageBubble: View {
                         .foregroundColor(.secondary)
                     }
 
-                    Spacer()
-
                     if !message.isFromUser,
                        let tokenCount = message.tokenCount,
                        let tps = message.tokensPerSecond,
                        tokenCount > 0 {
+                        Spacer()
                         Label(String(format: settings.localized("tokens_per_second_format"), tokenCount, tps), systemImage: "bolt.fill")
                             .font(.caption2)
                             .foregroundColor(.secondary)
@@ -781,6 +798,10 @@ struct ChatScreen: View {
     @State private var showDrawer = false
     @State private var showSettings = false
     @State private var copiedMessageId: UUID? = nil
+    @State private var selectedImageItem: PhotosPickerItem?
+    @State private var attachedImageURL: URL?
+    @State private var attachedAudioURL: URL?
+    @State private var showAudioImporter = false
     @FocusState private var isComposerFocused: Bool
 
     var body: some View {
@@ -895,7 +916,50 @@ struct ChatScreen: View {
 
             Divider()
 
+            if attachedImageURL != nil || attachedAudioURL != nil {
+                HStack(spacing: 8) {
+                    if attachedImageURL != nil {
+                        attachmentPill(label: settings.localized("vision"), icon: "photo") {
+                            attachedImageURL = nil
+                            selectedImageItem = nil
+                        }
+                    }
+                    if attachedAudioURL != nil {
+                        attachmentPill(label: settings.localized("audio"), icon: "waveform") {
+                            attachedAudioURL = nil
+                        }
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .padding(.top, 6)
+            }
+
             HStack(spacing: 10) {
+                let selectedModel = ModelData.models.first(where: { $0.name == vm.selectedModelName })
+                let canAttachVision = (selectedModel?.supportsVision == true) && vm.enableVision
+                let canAttachAudio = (selectedModel?.supportsAudio == true) && vm.enableAudio
+
+                if canAttachVision {
+                    PhotosPicker(selection: $selectedImageItem, matching: .images) {
+                        Image(systemName: "photo")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.indigo)
+                    }
+                    .disabled(vm.isGenerating)
+                }
+
+                if canAttachAudio {
+                    Button {
+                        showAudioImporter = true
+                    } label: {
+                        Image(systemName: "waveform")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.indigo)
+                    }
+                    .disabled(vm.isGenerating)
+                }
+
                 TextField(settings.localized("type_a_message"), text: $vm.inputText, axis: .vertical)
                     .lineLimit(1...5)
                     .padding(.horizontal, 14)
@@ -903,21 +967,36 @@ struct ChatScreen: View {
                     .background(Color(.secondarySystemBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 22))
                     .focused($isComposerFocused)
-                    .onSubmit { vm.sendMessage() }
+                    .onSubmit {
+                        if vm.sendMessage(imageURL: attachedImageURL, audioURL: attachedAudioURL) {
+                            attachedImageURL = nil
+                            attachedAudioURL = nil
+                            selectedImageItem = nil
+                        }
+                    }
 
                 Button {
                     isComposerFocused = false
                     if vm.isGenerating {
                         vm.stopGeneration()
                     } else {
-                        vm.sendMessage()
+                        if vm.sendMessage(imageURL: attachedImageURL, audioURL: attachedAudioURL) {
+                            attachedImageURL = nil
+                            attachedAudioURL = nil
+                            selectedImageItem = nil
+                        }
                     }
                 } label: {
                     Image(systemName: vm.isGenerating ? "stop.circle.fill" : "arrow.up.circle.fill")
                         .font(.system(size: 34))
                         .foregroundStyle(vm.isGenerating ? .red : .indigo)
                 }
-                .disabled(!vm.isGenerating && vm.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(
+                    !vm.isGenerating
+                        && vm.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        && attachedImageURL == nil
+                        && attachedAudioURL == nil
+                )
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
@@ -952,6 +1031,96 @@ struct ChatScreen: View {
                 onNavigateToModels: onNavigateToModels,
                 onNavigateToSettings: onNavigateToSettings
             )
+        }
+        .fileImporter(
+            isPresented: $showAudioImporter,
+            allowedContentTypes: [.audio, .mpeg4Audio],
+            allowsMultipleSelection: false
+        ) { result in
+            guard case .success(let urls) = result, let sourceURL = urls.first else { return }
+            attachedAudioURL = copyAttachmentToTemp(sourceURL, preferredExtension: sourceURL.pathExtension.isEmpty ? "m4a" : sourceURL.pathExtension)
+        }
+        .onChange(of: selectedImageItem) { _, item in
+            guard let item else {
+                attachedImageURL = nil
+                return
+            }
+
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self) {
+                    await MainActor.run {
+                        attachedImageURL = writeAttachmentData(data, preferredExtension: "jpg")
+                    }
+                }
+            }
+        }
+        .onChange(of: vm.enableVision) { _, enabled in
+            if !enabled {
+                attachedImageURL = nil
+                selectedImageItem = nil
+            }
+        }
+        .onChange(of: vm.enableAudio) { _, enabled in
+            if !enabled {
+                attachedAudioURL = nil
+            }
+        }
+        .onChange(of: vm.selectedModelName) { _, _ in
+            let selectedModel = ModelData.models.first(where: { $0.name == vm.selectedModelName })
+            let canAttachVision = (selectedModel?.supportsVision == true) && vm.enableVision
+            let canAttachAudio = (selectedModel?.supportsAudio == true) && vm.enableAudio
+
+            if !canAttachVision {
+                attachedImageURL = nil
+                selectedImageItem = nil
+            }
+            if !canAttachAudio {
+                attachedAudioURL = nil
+            }
+        }
+    }
+
+    private func attachmentPill(label: String, icon: String, onRemove: @escaping () -> Void) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+            Text(label)
+            Button(action: onRemove) {
+                Image(systemName: "xmark.circle.fill")
+            }
+        }
+        .font(.caption)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(Capsule())
+    }
+
+    private func writeAttachmentData(_ data: Data, preferredExtension: String) -> URL? {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("llmhub_attachments", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let ext = preferredExtension.isEmpty ? "bin" : preferredExtension
+        let url = dir.appendingPathComponent(UUID().uuidString).appendingPathExtension(ext)
+        do {
+            try data.write(to: url, options: .atomic)
+            return url
+        } catch {
+            return nil
+        }
+    }
+
+    private func copyAttachmentToTemp(_ sourceURL: URL, preferredExtension: String) -> URL? {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("llmhub_attachments", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let ext = preferredExtension.isEmpty ? sourceURL.pathExtension : preferredExtension
+        let destinationURL = dir.appendingPathComponent(UUID().uuidString).appendingPathExtension(ext)
+        do {
+            if FileManager.default.fileExists(atPath: destinationURL.path) {
+                try FileManager.default.removeItem(at: destinationURL)
+            }
+            try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
+            return destinationURL
+        } catch {
+            return nil
         }
     }
 
@@ -1002,9 +1171,19 @@ struct ChatScreen: View {
     private var downloadedModels: [AIModel] {
         guard let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return [] }
         let modelsDir = documentsDir.appendingPathComponent("models")
+        let optionalFiles: Set<String> = ["chat_template.jinja"]
+
         return ModelData.models.filter { model in
-            let weightsFile = modelsDir.appendingPathComponent(model.id).appendingPathComponent("model.safetensors")
-            return FileManager.default.fileExists(atPath: weightsFile.path)
+            let modelDir = modelsDir.appendingPathComponent(model.id)
+            guard FileManager.default.fileExists(atPath: modelDir.path) else { return false }
+
+            let requiredFiles = model.files.filter { !optionalFiles.contains($0) }
+            guard !requiredFiles.isEmpty else { return false }
+
+            return requiredFiles.allSatisfy { fileName in
+                let fileURL = modelDir.appendingPathComponent(fileName)
+                return FileManager.default.fileExists(atPath: fileURL.path)
+            }
         }
     }
 }

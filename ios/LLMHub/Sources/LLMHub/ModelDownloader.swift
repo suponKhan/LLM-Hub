@@ -41,27 +41,48 @@ public actor ModelDownloader {
     }
 
     private func remoteFileSize(fileURL: URL, hfToken: String?) async -> Int64? {
-        var request = URLRequest(url: fileURL, cachePolicy: .reloadIgnoringLocalCacheData)
-        request.httpMethod = "HEAD"
-        if let token = hfToken, !token.isEmpty {
-            request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        func authorizedRequest(method: String) -> URLRequest {
+            var request = URLRequest(url: fileURL, cachePolicy: .reloadIgnoringLocalCacheData)
+            request.httpMethod = method
+            if let token = hfToken, !token.isEmpty {
+                request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+            return request
         }
 
+        // First try HEAD for content length.
         do {
+            let request = authorizedRequest(method: "HEAD")
             let (_, response) = try await urlSession.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse,
-                (200...299).contains(httpResponse.statusCode)
-            else {
-                return nil
-            }
-            if let contentLength = httpResponse.value(forHTTPHeaderField: "Content-Length"),
-                let size = Int64(contentLength),
-                size > 0
-            {
+            if let httpResponse = response as? HTTPURLResponse,
+               (200...299).contains(httpResponse.statusCode),
+               let contentLength = httpResponse.value(forHTTPHeaderField: "Content-Length"),
+               let size = Int64(contentLength),
+               size > 0 {
                 return size
             }
         } catch {
-            // If HEAD fails, fall back to downloading file again.
+            // Fall through to range probe.
+        }
+
+        // Some endpoints block HEAD; probe with GET Range to parse total size from Content-Range.
+        do {
+            var request = authorizedRequest(method: "GET")
+            request.addValue("bytes=0-0", forHTTPHeaderField: "Range")
+            let (_, response) = try await urlSession.data(for: request)
+            if let httpResponse = response as? HTTPURLResponse {
+                if let total = totalSizeFromContentRange(httpResponse.value(forHTTPHeaderField: "Content-Range")), total > 0 {
+                    return total
+                }
+                if let contentLength = httpResponse.value(forHTTPHeaderField: "Content-Length"),
+                   let size = Int64(contentLength),
+                   size > 0,
+                   httpResponse.statusCode == 200 {
+                    return size
+                }
+            }
+        } catch {
+            // Give up and treat as unknown size.
         }
         return nil
     }
@@ -93,8 +114,27 @@ public actor ModelDownloader {
         let totalSize = model.sizeBytes
         var downloadedBytesPerFile: [String: Int64] = [:]
         var expectedBytesPerFile: [String: Int64] = [:]
-        let startTime = Date()
-        var transferredBytesThisDownloadSession: Int64 = 0
+        let realtimeWindowSeconds: TimeInterval = 3.0
+        var throughputSamples: [(time: Date, bytes: Int64)] = []
+
+        func recordTransfer(_ bytes: Int64) {
+            guard bytes > 0 else { return }
+            let now = Date()
+            throughputSamples.append((time: now, bytes: bytes))
+            let cutoff = now.addingTimeInterval(-realtimeWindowSeconds)
+            throughputSamples.removeAll { $0.time < cutoff }
+        }
+
+        func realtimeSpeed() -> Double {
+            guard !throughputSamples.isEmpty else { return 0 }
+            let now = Date()
+            let cutoff = now.addingTimeInterval(-realtimeWindowSeconds)
+            throughputSamples.removeAll { $0.time < cutoff }
+            guard let firstTime = throughputSamples.first?.time else { return 0 }
+            let bytes = throughputSamples.reduce(Int64(0)) { $0 + $1.bytes }
+            let span = max(0.1, now.timeIntervalSince(firstTime))
+            return Double(bytes) / span
+        }
         
         // Ensure clean destination
         if !FileManager.default.fileExists(atPath: destinationDir.path) {
@@ -125,8 +165,7 @@ public actor ModelDownloader {
                     if let expectedSize, expectedSize == fileSize {
                         downloadedBytesPerFile[fileName] = fileSize
                         let currentTotal = downloadedBytesPerFile.values.reduce(0, +)
-                        let elapsed = Date().timeIntervalSince(startTime)
-                        let speed = elapsed > 0 ? Double(transferredBytesThisDownloadSession) / elapsed : 0
+                        let speed = realtimeSpeed()
                         onProgress(DownloadUpdate(bytesDownloaded: currentTotal, totalBytes: totalSize, speedBytesPerSecond: speed))
                         continue
                     }
@@ -169,8 +208,7 @@ public actor ModelDownloader {
                             if let refreshedExpected, existingBytes >= refreshedExpected {
                                 downloadedBytesPerFile[fileName] = refreshedExpected
                                 let currentTotal = downloadedBytesPerFile.values.reduce(0, +)
-                                let elapsed = Date().timeIntervalSince(startTime)
-                                let speed = elapsed > 0 ? Double(transferredBytesThisDownloadSession) / elapsed : 0
+                                let speed = realtimeSpeed()
                                 onProgress(DownloadUpdate(bytesDownloaded: currentTotal, totalBytes: totalSize, speedBytesPerSecond: speed))
                                 finishedFile = true
                                 break
@@ -226,13 +264,12 @@ public actor ModelDownloader {
                             let flushedBytes = Int64(buffer.count)
                             try fileHandle.write(contentsOf: buffer)
                             buffer.removeAll(keepingCapacity: true)
-                            transferredBytesThisDownloadSession += flushedBytes
+                            recordTransfer(flushedBytes)
 
                             // Periodic Progress Update
                             downloadedBytesPerFile[fileName] = byteCountPerFile
                             let currentTotal = downloadedBytesPerFile.values.reduce(0, +)
-                            let elapsed = Date().timeIntervalSince(startTime)
-                            let speed = elapsed > 0 ? Double(transferredBytesThisDownloadSession) / elapsed : 0
+                            let speed = realtimeSpeed()
                             onProgress(DownloadUpdate(bytesDownloaded: currentTotal, totalBytes: totalSize, speedBytesPerSecond: speed))
                         }
                     }
@@ -241,13 +278,12 @@ public actor ModelDownloader {
                         let flushedBytes = Int64(buffer.count)
                         try fileHandle.write(contentsOf: buffer)
                         buffer.removeAll()
-                        transferredBytesThisDownloadSession += flushedBytes
+                        recordTransfer(flushedBytes)
                     }
 
                     downloadedBytesPerFile[fileName] = byteCountPerFile
                     let currentTotal = downloadedBytesPerFile.values.reduce(0, +)
-                    let elapsed = Date().timeIntervalSince(startTime)
-                    let speed = elapsed > 0 ? Double(transferredBytesThisDownloadSession) / elapsed : 0
+                    let speed = realtimeSpeed()
                     onProgress(DownloadUpdate(bytesDownloaded: currentTotal, totalBytes: totalSize, speedBytesPerSecond: speed))
                     finishedFile = true
                 } catch let error as URLError where error.code.isTransientDownloadFailure && attempt < maxRetries {

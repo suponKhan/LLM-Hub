@@ -410,20 +410,12 @@ struct ModelRowView: View {
                                     .clipShape(RoundedRectangle(cornerRadius: 10))
                             }
                         case .downloaded:
-                            Button(action: {}) {
-                                Label(settings.localized("reload_model"), systemImage: "play.circle.fill")
+                            Button(action: onDelete) {
+                                Label(settings.localized("action_delete"), systemImage: "trash")
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 10)
-                                    .background(.green.gradient)
+                                    .background(.red.gradient)
                                     .foregroundColor(.white)
-                                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                            }
-                            Button(action: onDelete) {
-                                Image(systemName: "trash")
-                                    .padding(.vertical, 10)
-                                    .padding(.horizontal, 14)
-                                    .background(.red.opacity(0.1))
-                                    .foregroundColor(.red)
                                     .clipShape(RoundedRectangle(cornerRadius: 10))
                             }
                         }

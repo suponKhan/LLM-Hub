@@ -129,18 +129,23 @@ public struct ModelData {
             sizeBytes: 4460000000,
             source: "Google",
             supportsVision: true,
-            supportsAudio: false,
+            supportsAudio: true,
             requirements: ModelRequirements(minRamGB: 8, recommendedRamGB: 12),
             contextWindowSize: 4096,
             modelFormat: .mlx,
             files: [
                 "config.json",
+                "generation_config.json",
+                "preprocessor_config.json",
+                "processor_config.json",
                 "tokenizer.json",
+                "tokenizer.model",
                 "tokenizer_config.json",
                 "model.safetensors",
+                "model.safetensors.index.json",
+                "special_tokens_map.json",
                 "chat_template.jinja",
-                "preprocessor_config.json",
-                "processor_config.json"
+                "README.md"
             ]
         ),
         AIModel(
@@ -157,14 +162,18 @@ public struct ModelData {
             modelFormat: .mlx,
             files: [
                 "config.json",
+                "generation_config.json",
+                "preprocessor_config.json",
+                "processor_config.json",
                 "tokenizer.json",
+                "tokenizer.model",
                 "tokenizer_config.json",
                 "model-00001-of-00002.safetensors",
                 "model-00002-of-00002.safetensors",
                 "model.safetensors.index.json",
+                "special_tokens_map.json",
                 "chat_template.jinja",
-                "preprocessor_config.json",
-                "processor_config.json"
+                "README.md"
             ]
         ),
 
