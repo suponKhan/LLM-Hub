@@ -31,7 +31,7 @@ public actor ModelDownloader {
     
     private let urlSession: URLSession
     private let completionThresholdRatio: Double = 0.98
-    private let optionalModelFiles: Set<String> = ["chat_template.jinja"]
+    private let optionalModelFiles: Set<String> = []
     
     private init() {
         let config = URLSessionConfiguration.default
@@ -141,14 +141,9 @@ public actor ModelDownloader {
             try FileManager.default.createDirectory(at: destinationDir, withIntermediateDirectories: true)
         }
         
-        for fileName in model.files {
-            // Encode repoId and fileName separately to avoid corrupting URL structure
-            // Use urlPathAllowed but carefully since repoId has a slash
-            let encodedRepoId = model.repoId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? model.repoId
-            let encodedFileName = fileName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? fileName
-            let urlString = "https://huggingface.co/\(encodedRepoId)/resolve/main/\(encodedFileName)"
-            
-            guard let fileURL = URL(string: urlString) else { continue }
+        let downloadItems = Array(zip(model.requiredFileNames, model.allDownloadURLs))
+
+        for (fileName, fileURL) in downloadItems {
             
             let destinationFileURL = destinationDir.appendingPathComponent(fileName)
             let expectedSize = await remoteFileSize(fileURL: fileURL, hfToken: hfToken)
@@ -223,7 +218,7 @@ public actor ModelDownloader {
                             }
                         }
 
-                        // Ignore missing optional files (like chat_template.jinja in some older MLX repos)
+                        // Ignore missing optional files.
                         if httpResponse.statusCode == 404 && optionalModelFiles.contains(fileName) {
                             finishedFile = true
                             break
@@ -295,7 +290,7 @@ public actor ModelDownloader {
         }
 
         var finalBytes: Int64 = 0
-        for fileName in model.files {
+        for fileName in model.requiredFileNames {
             if optionalModelFiles.contains(fileName) {
                 continue
             }

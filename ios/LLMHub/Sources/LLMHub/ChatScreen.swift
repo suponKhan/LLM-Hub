@@ -1,5 +1,6 @@
 import Foundation
 import PhotosUI
+import RunAnywhere
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -63,6 +64,16 @@ class ChatViewModel: ObservableObject {
     }
 
     init() {
+        do {
+            try RunAnywhere.initialize(environment: .development)
+        } catch {
+            // Ignore repeated initialization attempts.
+        }
+
+        Task {
+            _ = await RunAnywhere.discoverDownloadedModels()
+        }
+
         if let empty = chatStore.chatSessions.first(where: { $0.messages.isEmpty }) {
             currentSessionId = empty.id
         } else {
@@ -1169,19 +1180,23 @@ struct ChatScreen: View {
     }
     
     private var downloadedModels: [AIModel] {
-        guard let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return [] }
-        let modelsDir = documentsDir.appendingPathComponent("models")
-        let optionalFiles: Set<String> = ["chat_template.jinja"]
+        let legacyModelsDir: URL? = {
+            guard let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return nil }
+            return documentsDir.appendingPathComponent("models")
+        }()
 
         return ModelData.models.filter { model in
-            let modelDir = modelsDir.appendingPathComponent(model.id)
-            guard FileManager.default.fileExists(atPath: modelDir.path) else { return false }
+            if RunAnywhere.isModelDownloaded(model.id, framework: model.inferenceFramework) {
+                return true
+            }
 
-            let requiredFiles = model.files.filter { !optionalFiles.contains($0) }
-            guard !requiredFiles.isEmpty else { return false }
+            guard let legacyModelsDir else { return false }
+            let legacyModelDir = legacyModelsDir.appendingPathComponent(model.id)
+            guard FileManager.default.fileExists(atPath: legacyModelDir.path) else { return false }
+            guard !model.requiredFileNames.isEmpty else { return false }
 
-            return requiredFiles.allSatisfy { fileName in
-                let fileURL = modelDir.appendingPathComponent(fileName)
+            return model.requiredFileNames.allSatisfy { fileName in
+                let fileURL = legacyModelDir.appendingPathComponent(fileName)
                 return FileManager.default.fileExists(atPath: fileURL.path)
             }
         }

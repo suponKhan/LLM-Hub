@@ -11,17 +11,12 @@
 		2A3672DC476297C35298841D /* HomeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6D5DEA8384F9DDFC69C359C /* HomeScreen.swift */; };
 		366119C26429D712F621B7DF /* ModelDownloadScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E674F93296C177D68CCEFED /* ModelDownloadScreen.swift */; };
 		3701462555C0F00B7A0F5B01 /* ChatScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = C54A0BA40DE3F5B7A1ED9A63 /* ChatScreen.swift */; };
-		386923865A52FFA9B955EFC8 /* MLXLMCommon in Frameworks */ = {isa = PBXBuildFile; productRef = 3AEAABAF11DD8A43CF011897 /* MLXLMCommon */; };
-		3D9B9E094861BF2162D95F61 /* MLX in Frameworks */ = {isa = PBXBuildFile; productRef = 9307F4EE8A20C529993E87D1 /* MLX */; };
+		3D9B9E094861BF2162D95F61 /* RunAnywhere in Frameworks */ = {isa = PBXBuildFile; productRef = 9307F4EE8A20C529993E87D1 /* RunAnywhere */; };
 		467EEBBF61BCADC562B0C42C /* ChatModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0805DB9589154E465145E2DB /* ChatModels.swift */; };
-		53928AD8C4220112FFACD231 /* MLXLLM in Frameworks */ = {isa = PBXBuildFile; productRef = 4CFF435F1F1C875A33F8AB80 /* MLXLLM */; };
 		53F6C1EA0149E74AC5BB3E22 /* LLMBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECD7AAE029AF6E8F7EA01B3D /* LLMBackend.swift */; };
 		59504FB10CC196F7E32BAB32 /* ModelData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3C1A239A9E6DC307A0767C5 /* ModelData.swift */; };
-		6372C98A9FABB86542492C76 /* MLXOptimizers in Frameworks */ = {isa = PBXBuildFile; productRef = 74C3DCB33C77D2DC40118829 /* MLXOptimizers */; };
 		8372657E94B22EF042E769D9 /* ModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D54909FE8CC139164BABB54 /* ModelManager.swift */; };
-		8DC715D0DD4EE08AA55875E3 /* Transformers in Frameworks */ = {isa = PBXBuildFile; productRef = 78F45C07291D85D13396C234 /* Transformers */; };
 		98A2325EC92DABBC3DFE2229 /* ChatStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C56D7A951BFDFE19E54CB73B /* ChatStore.swift */; };
-		9BF5CD39A8176593E09F12FE /* MLXNN in Frameworks */ = {isa = PBXBuildFile; productRef = 1B2FAE96A8CAEFA57895856F /* MLXNN */; };
 		9D4F93BDDE99FDE1ECFA704A /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 60A19FA5E2C65DD1CDCAB9BB /* Accelerate.framework */; };
 		AFCC035B534D28D50731B66D /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A69D8D4DF513F8D642F73064 /* Localizable.strings */; };
 		B0DC2F58405BDC55315A8099 /* ModelDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05BF91E2CF47146ED081A0A8 /* ModelDownloader.swift */; };
@@ -30,7 +25,7 @@
 		CB9C318430890100AF670AFF /* SettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A587C281FC51DF179CF26022 /* SettingsScreen.swift */; };
 		CBC2016A51F62C4A68987D57 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F7A456876803C1FBBE0A211 /* ContentView.swift */; };
 		DF4968608455CAC5D2C20BE3 /* ChatSettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E06F261B9A91F8AA8BAA4778 /* ChatSettingsSheet.swift */; };
-		E534E3B14352A9FCAA9F1A89 /* MLXRandom in Frameworks */ = {isa = PBXBuildFile; productRef = 72F0EB7DB1F54E3913BC8763 /* MLXRandom */; };
+		E534E3B14352A9FCAA9F1A89 /* RunAnywhereLlamaCPP in Frameworks */ = {isa = PBXBuildFile; productRef = 72F0EB7DB1F54E3913BC8763 /* RunAnywhereLlamaCPP */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -74,13 +69,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3D9B9E094861BF2162D95F61 /* MLX in Frameworks */,
-				E534E3B14352A9FCAA9F1A89 /* MLXRandom in Frameworks */,
-				9BF5CD39A8176593E09F12FE /* MLXNN in Frameworks */,
-				6372C98A9FABB86542492C76 /* MLXOptimizers in Frameworks */,
-				53928AD8C4220112FFACD231 /* MLXLLM in Frameworks */,
-				386923865A52FFA9B955EFC8 /* MLXLMCommon in Frameworks */,
-				8DC715D0DD4EE08AA55875E3 /* Transformers in Frameworks */,
+				3D9B9E094861BF2162D95F61 /* RunAnywhere in Frameworks */,
+				E534E3B14352A9FCAA9F1A89 /* RunAnywhereLlamaCPP in Frameworks */,
 				9D4F93BDDE99FDE1ECFA704A /* Accelerate.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -154,13 +144,8 @@
 			);
 			name = LLMHub;
 			packageProductDependencies = (
-				9307F4EE8A20C529993E87D1 /* MLX */,
-				72F0EB7DB1F54E3913BC8763 /* MLXRandom */,
-				1B2FAE96A8CAEFA57895856F /* MLXNN */,
-				74C3DCB33C77D2DC40118829 /* MLXOptimizers */,
-				4CFF435F1F1C875A33F8AB80 /* MLXLLM */,
-				3AEAABAF11DD8A43CF011897 /* MLXLMCommon */,
-				78F45C07291D85D13396C234 /* Transformers */,
+				9307F4EE8A20C529993E87D1 /* RunAnywhere */,
+				72F0EB7DB1F54E3913BC8763 /* RunAnywhereLlamaCPP */,
 			);
 			productName = LLMHub;
 			productReference = 5F60B98E5AE21634E4E47E99 /* LLMHub.app */;
@@ -205,9 +190,7 @@
 			);
 			mainGroup = 60C52022B63693117913378C;
 			packageReferences = (
-				A26F31FFA020DC1866683F48 /* XCRemoteSwiftPackageReference "mlx-swift" */,
-				A3C59B87CB33C42AB7682E86 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */,
-				13CD872928BBB3B051AA61E3 /* XCRemoteSwiftPackageReference "swift-transformers" */,
+				A26F31FFA020DC1866683F48 /* XCRemoteSwiftPackageReference "runanywhere-sdks" */,
 			);
 			projectDirPath = "";
 			projectRoot = "";
@@ -331,7 +314,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -358,7 +341,7 @@
 				INFOPLIST_KEY_UIStatusBarStyle = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -387,7 +370,7 @@
 				INFOPLIST_KEY_UIStatusBarStyle = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -446,7 +429,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -480,68 +463,23 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		13CD872928BBB3B051AA61E3 /* XCRemoteSwiftPackageReference "swift-transformers" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/huggingface/swift-transformers";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.1.9;
-			};
+/* Begin XCLocalSwiftPackageReference section */
+		A26F31FFA020DC1866683F48 /* XCLocalSwiftPackageReference "runanywhere-sdks-latest" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../runanywhere-sdks-latest;
 		};
-		A26F31FFA020DC1866683F48 /* XCRemoteSwiftPackageReference "mlx-swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/ml-explore/mlx-swift";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.30.6;
-			};
-		};
-		A3C59B87CB33C42AB7682E86 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/ml-explore/mlx-swift-lm";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.30.6;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
+/* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		1B2FAE96A8CAEFA57895856F /* MLXNN */ = {
+		72F0EB7DB1F54E3913BC8763 /* RunAnywhereLlamaCPP */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = A26F31FFA020DC1866683F48 /* XCRemoteSwiftPackageReference "mlx-swift" */;
-			productName = MLXNN;
+			package = A26F31FFA020DC1866683F48 /* XCLocalSwiftPackageReference "runanywhere-sdks-latest" */;
+			productName = RunAnywhereLlamaCPP;
 		};
-		3AEAABAF11DD8A43CF011897 /* MLXLMCommon */ = {
+		9307F4EE8A20C529993E87D1 /* RunAnywhere */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = A3C59B87CB33C42AB7682E86 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */;
-			productName = MLXLMCommon;
-		};
-		4CFF435F1F1C875A33F8AB80 /* MLXLLM */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A3C59B87CB33C42AB7682E86 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */;
-			productName = MLXLLM;
-		};
-		72F0EB7DB1F54E3913BC8763 /* MLXRandom */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A26F31FFA020DC1866683F48 /* XCRemoteSwiftPackageReference "mlx-swift" */;
-			productName = MLXRandom;
-		};
-		74C3DCB33C77D2DC40118829 /* MLXOptimizers */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A26F31FFA020DC1866683F48 /* XCRemoteSwiftPackageReference "mlx-swift" */;
-			productName = MLXOptimizers;
-		};
-		78F45C07291D85D13396C234 /* Transformers */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 13CD872928BBB3B051AA61E3 /* XCRemoteSwiftPackageReference "swift-transformers" */;
-			productName = Transformers;
-		};
-		9307F4EE8A20C529993E87D1 /* MLX */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A26F31FFA020DC1866683F48 /* XCRemoteSwiftPackageReference "mlx-swift" */;
-			productName = MLX;
+			package = A26F31FFA020DC1866683F48 /* XCLocalSwiftPackageReference "runanywhere-sdks-latest" */;
+			productName = RunAnywhere;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

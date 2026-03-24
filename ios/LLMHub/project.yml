@@ -2,24 +2,18 @@ name: LLMHub
 options:
   minimumXcodeGenVersion: 2.42.0
   deploymentTarget:
-    iOS: "26.0"
+    iOS: "17.0"
 
 packages:
-  mlx-swift:
-    url: https://github.com/ml-explore/mlx-swift
-    from: 0.30.6
-  mlx-swift-lm:
-    url: https://github.com/ml-explore/mlx-swift-lm
-    from: 2.30.6
-  swift-transformers:
-    url: https://github.com/huggingface/swift-transformers
-    from: 1.1.9
+  runanywhere-sdks:
+    url: https://github.com/RunanywhereAI/runanywhere-sdks
+    exact: 0.19.7
 
 targets:
   LLMHub:
     type: application
     platform: iOS
-    deploymentTarget: "26.0"
+    deploymentTarget: "17.0"
     sources:
       - path: Sources/LLMHub
         excludes:
@@ -40,18 +34,10 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
     dependencies:
-      - package: mlx-swift
-        product: MLX
-      - package: mlx-swift
-        product: MLXRandom
-      - package: mlx-swift
-        product: MLXNN
-      - package: mlx-swift
-        product: MLXOptimizers
-      - package: mlx-swift-lm
-        product: MLXLLM
-      - package: mlx-swift-lm
-        product: MLXLMCommon
-      - package: swift-transformers
-        product: Transformers
+      - package: runanywhere-sdks
+        product: RunAnywhere
+      - package: runanywhere-sdks
+        product: RunAnywhereLlamaCPP
+      - package: runanywhere-sdks
+        product: RunAnywhereONNX
       - sdk: Accelerate.framework

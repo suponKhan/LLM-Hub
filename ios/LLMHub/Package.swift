@@ -6,8 +6,8 @@ let package = Package(
     name: "LLMHub",
     defaultLocalization: "en",
     platforms: [
-        .iOS(.v26),
-        .macOS(.v26),
+        .iOS(.v17),
+        .macOS(.v14),
     ],
     products: [
         .library(
@@ -16,21 +16,14 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/ml-explore/mlx-swift", from: "0.30.6"),
-        .package(url: "https://github.com/ml-explore/mlx-swift-lm", from: "2.30.6"),
-        .package(url: "https://github.com/huggingface/swift-transformers", from: "1.1.9")
+        .package(path: "../runanywhere-sdks-latest")
     ],
     targets: [
         .target(
             name: "LLMHub",
             dependencies: [
-                .product(name: "MLX", package: "mlx-swift"),
-                .product(name: "MLXRandom", package: "mlx-swift"),
-                .product(name: "MLXNN", package: "mlx-swift"),
-                .product(name: "MLXOptimizers", package: "mlx-swift"),
-                .product(name: "MLXLLM", package: "mlx-swift-lm"),
-                .product(name: "MLXLMCommon", package: "mlx-swift-lm"),
-                .product(name: "Transformers", package: "swift-transformers")
+                .product(name: "RunAnywhere", package: "runanywhere-sdks"),
+                .product(name: "RunAnywhereLlamaCPP", package: "runanywhere-sdks")
             ],
             exclude: [
                 "check_strings.py"

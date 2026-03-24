@@ -37,8 +37,7 @@ public class ModelManager: ObservableObject {
         for model in ModelData.models {
             let modelDir = modelsDirectory.appendingPathComponent(model.id)
             if FileManager.default.fileExists(atPath: modelDir.path) {
-                // simple check: if the main model file exists, assume downloaded
-                // For MLX, we should check if model.safetensors or similar exists
+                // Simple check: if a known model artifact exists, assume downloaded.
                 let weightsFile = modelDir.appendingPathComponent("model.safetensors")
                 if FileManager.default.fileExists(atPath: weightsFile.path) {
                     modelStatuses[model.id] = .downloaded

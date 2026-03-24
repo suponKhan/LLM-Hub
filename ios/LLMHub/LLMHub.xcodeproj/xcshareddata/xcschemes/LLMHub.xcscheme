@@ -1,11 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
    LastUpgradeVersion = "2640"
-   version = "1.7">
+   version = "1.8">
    <BuildAction
       parallelizeBuildables = "YES"
       buildImplicitDependencies = "YES"
       buildArchitectures = "Automatic">
+      <PreActions>
+         <ExecutionAction
+            ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
+            <ActionContent
+               title = "Patch RunAnywhere SDK for iOS 26+ Compatibility"
+               scriptText = "chmod +x &quot;$PROJECT_DIR/scripts/patch_runanywhere_compression.sh&quot;&#10;/bin/zsh &quot;$PROJECT_DIR/scripts/patch_runanywhere_compression.sh&quot;"
+               shellToInvoke = "/bin/zsh">
+               <EnvironmentBuildable>
+                  <BuildableReference
+                     BuildableIdentifier = "primary"
+                     BlueprintIdentifier = "4DC2B594A3D4811E50B2A8D3"
+                     BuildableName = "LLMHub.app"
+                     BlueprintName = "LLMHub"
+                     ReferencedContainer = "container:LLMHub.xcodeproj">
+                  </BuildableReference>
+               </EnvironmentBuildable>
+            </ActionContent>
+         </ExecutionAction>
+      </PreActions>
       <BuildActionEntries>
          <BuildActionEntry
             buildForTesting = "YES"
