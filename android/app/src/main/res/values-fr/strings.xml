@@ -500,7 +500,7 @@
     <string name="translator_auto_detect">Détection Automatique</string>
     <string name="translator_translate">Traduire</string>
     <string name="translator_result">Traduction</string>
-    <string name="translator_requires_gemma3n">Cette fonctionnalité nécessite un modèle Gemma-3n. Veuillez en télécharger un depuis l\'écran Modèles.</string>
+    <string name="translator_requires_gemma3n">Cette fonctionnalité nécessite un modèle Gemma-3n ou Gemma-4 E2B/E4B. Veuillez en télécharger un depuis l\'écran Modèles.</string>
     
     <!-- Transcriber Screen -->
     <string name="transcriber_title">Transcripteur Hors Ligne</string>
@@ -510,7 +510,7 @@
     <string name="transcriber_result">Transcription</string>
     <string name="transcriber_recording">Enregistrement...</string>
     <string name="transcriber_stop">Arrêter l\'Enregistrement</string>
-    <string name="transcriber_requires_gemma3n">Cette fonctionnalité nécessite un modèle Gemma-3n avec support audio. Veuillez en télécharger un depuis l\'écran Modèles.</string>
+    <string name="transcriber_requires_gemma3n">Cette fonctionnalité nécessite un modèle Gemma-3n ou Gemma-4 E2B/E4B avec support audio. Veuillez en télécharger un depuis l\'écran Modèles.</string>
     
     <!-- Scam Detector Screen -->
     <string name="scam_detector_title">Détecteur d\'Arnaques</string>

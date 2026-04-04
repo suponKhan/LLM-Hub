@@ -463,14 +463,14 @@ fun ChatScreen(
             onBackendSelected = { backend, deviceId ->
                 viewModel.selectBackend(backend, deviceId)
             },
-            onLoadModel = { model, maxTokens, topK, topP, temperature, backend, deviceId, disableVision, disableAudio, nGpuLayers, enableThinking ->
-                Log.d("ChatScreen", "Model configs confirmed: maxTokens=$maxTokens topK=$topK topP=$topP temperature=$temperature backend=$backend deviceId=$deviceId disableVision=$disableVision disableAudio=$disableAudio nGpuLayers=$nGpuLayers enableThinking=$enableThinking for model ${model.name}")
+            onLoadModel = { model, maxTokens, topK, topP, temperature, backend, deviceId, disableVision, disableAudio, nGpuLayers, enableThinking, contextWindow ->
+                Log.d("ChatScreen", "Model configs confirmed: maxTokens=$maxTokens contextWindow=$contextWindow topK=$topK topP=$topP temperature=$temperature backend=$backend deviceId=$deviceId disableVision=$disableVision disableAudio=$disableAudio nGpuLayers=$nGpuLayers enableThinking=$enableThinking for model ${model.name}")
 
                 showSettingsSheet = false
 
                 val doLoad = {
                     // Push generation parameters to inference service via ViewModel
-                    viewModel.setGenerationParameters(maxTokens, topK, topP, temperature, nGpuLayers, enableThinking)
+                    viewModel.setGenerationParameters(maxTokens, topK, topP, temperature, nGpuLayers, enableThinking, contextWindow)
 
                     // Always sync backend + deviceId so stale NPU device from a previous session
                     // doesn't override the user's current selection (e.g. GPU with deviceId=null)

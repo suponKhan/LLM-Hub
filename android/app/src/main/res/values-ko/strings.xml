@@ -472,7 +472,7 @@
     <string name="translator_auto_detect">자동 감지</string>
     <string name="translator_translate">번역</string>
     <string name="translator_result">번역</string>
-    <string name="translator_requires_gemma3n">이 기능에는 Gemma-3n 모델이 필요합니다. 모델 화면에서 다운로드하세요.</string>
+    <string name="translator_requires_gemma3n">이 기능에는 Gemma-3n 또는 Gemma-4 E2B/E4B 모델이 필요합니다. 모델 화면에서 다운로드하세요.</string>
     
     <!-- Transcriber Screen -->
     <string name="transcriber_title">오프라인 전사기</string>
@@ -482,7 +482,7 @@
     <string name="transcriber_result">전사</string>
     <string name="transcriber_recording">녹음 중...</string>
     <string name="transcriber_stop">녹음 중지</string>
-    <string name="transcriber_requires_gemma3n">이 기능에는 오디오 지원이 있는 Gemma-3n 모델이 필요합니다. 모델 화면에서 다운로드하세요.</string>
+    <string name="transcriber_requires_gemma3n">이 기능에는 오디오 지원이 있는 Gemma-3n 또는 Gemma-4 E2B/E4B 모델이 필요합니다. 모델 화면에서 다운로드하세요.</string>
     
     <!-- Scam Detector Screen -->
     <string name="scam_detector_title">사기 탐지기</string>

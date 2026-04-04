@@ -469,7 +469,7 @@
     <string name="translator_auto_detect">自動検出</string>
     <string name="translator_translate">翻訳</string>
     <string name="translator_result">翻訳</string>
-    <string name="translator_requires_gemma3n">この機能にはGemma-3nモデルが必要です。モデル画面から1つダウンロードしてください。</string>
+    <string name="translator_requires_gemma3n">この機能にはGemma-3nまたはGemma-4 E2B/E4Bモデルが必要です。モデル画面から1つダウンロードしてください。</string>
     
     <!-- Transcriber Screen -->
     <string name="transcriber_title">オフライン文字起こし</string>
@@ -479,7 +479,7 @@
     <string name="transcriber_result">文字起こし結果</string>
     <string name="transcriber_recording">録音中...</string>
     <string name="transcriber_stop">録音を停止</string>
-    <string name="transcriber_requires_gemma3n">この機能には音声サポート付きのGemma-3nモデルが必要です。モデル画面から1つダウンロードしてください。</string>
+    <string name="transcriber_requires_gemma3n">この機能には音声サポート付きのGemma-3nまたはGemma-4 E2B/E4Bモデルが必要です。モデル画面から1つダウンロードしてください。</string>
     
     <!-- Scam Detector Screen -->
     <string name="scam_detector_title">詐欺検出器</string>

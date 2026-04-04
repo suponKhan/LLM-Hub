@@ -101,18 +101,16 @@ class VibeVoiceViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             val context = getApplication<Application>()
             val allModels = ModelAvailabilityProvider.loadAvailableModels(context)
-            val gemma3nAudioModels = allModels.filter {
-                it.supportsAudio && it.name.contains("Gemma-3n", ignoreCase = true)
-            }
-            _availableModels.value = gemma3nAudioModels
+            val audioModels = allModels.filter { it.supportsAudio }
+            _availableModels.value = audioModels
 
             val savedModelName = prefs.getString("selected_model_name", null)
             if (savedModelName != null) {
-                val saved = gemma3nAudioModels.find { it.name == savedModelName }
+                val saved = audioModels.find { it.name == savedModelName }
                 if (saved != null) _selectedModel.value = saved
             }
-            if (gemma3nAudioModels.isNotEmpty() && _selectedModel.value == null) {
-                _selectedModel.value = gemma3nAudioModels.first()
+            if (audioModels.isNotEmpty() && _selectedModel.value == null) {
+                _selectedModel.value = audioModels.first()
             }
         }
     }

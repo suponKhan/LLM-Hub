@@ -1450,7 +1450,7 @@ class NexaInferenceService @Inject constructor(
     override fun getCurrentlyLoadedBackend(): LlmInference.Backend? = currentPreferredBackend
     override fun getMemoryWarningForImages(images: List<Bitmap>): String? = null
     override fun wasSessionRecentlyReset(chatId: String): Boolean = false
-    override fun setGenerationParameters(maxTokens: Int?, topK: Int?, topP: Float?, temperature: Float?, nGpuLayers: Int?, enableThinking: Boolean?) {
+    override fun setGenerationParameters(maxTokens: Int?, topK: Int?, topP: Float?, temperature: Float?, nGpuLayers: Int?, enableThinking: Boolean?, contextWindow: Int?) {
         overrideMaxTokens = maxTokens
         overrideTopK = topK
         overrideTopP = topP

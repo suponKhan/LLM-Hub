@@ -63,7 +63,7 @@ interface InferenceService {
     fun getMemoryWarningForImages(images: List<Bitmap>): String?
     fun wasSessionRecentlyReset(chatId: String): Boolean
     // Allow runtime update of generation parameters (from UI dialog)
-    fun setGenerationParameters(maxTokens: Int?, topK: Int?, topP: Float?, temperature: Float?, nGpuLayers: Int? = null, enableThinking: Boolean? = null)
+    fun setGenerationParameters(maxTokens: Int?, topK: Int?, topP: Float?, temperature: Float?, nGpuLayers: Int? = null, enableThinking: Boolean? = null, contextWindow: Int? = null)
     // Get current modality disabled states
     fun isVisionCurrentlyDisabled(): Boolean
     fun isAudioCurrentlyDisabled(): Boolean
@@ -111,6 +111,7 @@ class MediaPipeInferenceService(private val applicationContext: Context) : Infer
     private var isAudioDisabled: Boolean = false
     // Optional overrides provided by UI (null means use defaults)
     private var overrideMaxTokens: Int? = null
+    private var overrideContextWindow: Int? = null
     private var overrideTopK: Int? = null
     private var overrideTopP: Float? = null
     private var overrideTemperature: Float? = null
@@ -149,8 +150,8 @@ class MediaPipeInferenceService(private val applicationContext: Context) : Infer
     }
 
     override fun getEffectiveMaxTokens(model: LLMModel): Int {
-        val defaultMaxTokens = getMaxTokensForModel(model)
-        return overrideMaxTokens?.coerceAtMost(defaultMaxTokens) ?: defaultMaxTokens
+        val contextWindow = overrideContextWindow?.coerceIn(1, model.contextWindowSize) ?: minOf(2048, model.contextWindowSize)
+        return overrideMaxTokens?.coerceIn(1, contextWindow) ?: contextWindow
     }
 
     override suspend fun loadModel(model: LLMModel, preferredBackend: LlmInference.Backend?, deviceId: String?): Boolean {
@@ -175,12 +176,13 @@ class MediaPipeInferenceService(private val applicationContext: Context) : Infer
         }
     }
 
-    override fun setGenerationParameters(maxTokens: Int?, topK: Int?, topP: Float?, temperature: Float?, nGpuLayers: Int?, enableThinking: Boolean?) {
+    override fun setGenerationParameters(maxTokens: Int?, topK: Int?, topP: Float?, temperature: Float?, nGpuLayers: Int?, enableThinking: Boolean?, contextWindow: Int?) {
         overrideMaxTokens = maxTokens
+        overrideContextWindow = contextWindow
         overrideTopK = topK
         overrideTopP = topP
         overrideTemperature = temperature
-        Log.d(TAG, "Set generation parameters: maxTokens=$maxTokens topK=$topK topP=$topP temperature=$temperature")
+        Log.d(TAG, "Set generation parameters: maxTokens=$maxTokens contextWindow=$contextWindow topK=$topK topP=$topP temperature=$temperature")
     }
 
     override suspend fun unloadModel() {
@@ -463,20 +465,31 @@ class MediaPipeInferenceService(private val applicationContext: Context) : Infer
             }
             
             // Determine backend - use preferred backend if provided, otherwise use model's GPU support
-            val backend = preferredBackend ?: if (model.supportsGpu) LlmInference.Backend.GPU else LlmInference.Backend.CPU
+            // NOTE: Gemma-4 (litertlm format) GPU decode crashes on tasks-genai due to missing
+            // libLiteRtTopKOpenClSampler.so (known bug, fixed in litertlm-android 0.10.1 not yet on Maven).
+            // Force CPU for litertlm models to avoid the crash until the fix ships.
+            val isLitertlm = model.modelFormat == "litertlm"
+            val effectiveBackend = if (isLitertlm && preferredBackend == LlmInference.Backend.GPU) {
+                Log.w(TAG, "GPU backend requested for litertlm model ${model.name} but tasks-genai has a known GPU decode bug — forcing CPU")
+                LlmInference.Backend.CPU
+            } else {
+                preferredBackend ?: if (model.supportsGpu) LlmInference.Backend.GPU else LlmInference.Backend.CPU
+            }
+            val backend = effectiveBackend
             
             Log.d(TAG, "Selected backend: $backend for model: ${modelFile.name} ${if (preferredBackend != null) "(user preference)" else "(auto-selected)"}")
             
-            // Determine max tokens based on model configuration (allow override)
-            val defaultMaxTokens = getMaxTokensForModel(model)
-            val maxTokens = overrideMaxTokens?.coerceAtMost(defaultMaxTokens) ?: defaultMaxTokens
+            // Determine context window (KV cache allocation) and max tokens (generation cap)
+            // Default to min(2048, model max) if user hasn't set a value — avoids OOM on large-window models
+            val safeDefault = minOf(2048, model.contextWindowSize)
+            val contextWindow = overrideContextWindow?.coerceIn(1, model.contextWindowSize) ?: safeDefault
 
             Log.d(TAG, "Model configuration:")
             Log.d(TAG, "  - Name: ${model.name}")
             Log.d(TAG, "  - File: ${modelFile.name}")
             Log.d(TAG, "  - Path: ${modelFile.absolutePath}")
-            Log.d(TAG, "  - Context window: ${model.contextWindowSize}")
-            Log.d(TAG, "  - Max tokens: $maxTokens (default was $defaultMaxTokens)")
+            Log.d(TAG, "  - Model native max context (from file): ${model.contextWindowSize}")
+            Log.d(TAG, "  - *** ACTUAL KV CACHE setMaxTokens = $contextWindow (user set, NOT model max) ***")
             Log.d(TAG, "  - Backend: $backend")
             Log.d(TAG, "  - Supports vision: ${model.supportsVision}")
             Log.d(TAG, "  - Supports audio: ${model.supportsAudio}")
@@ -484,7 +497,7 @@ class MediaPipeInferenceService(private val applicationContext: Context) : Infer
             // Create LLM inference options
             val optionsBuilder = LlmInference.LlmInferenceOptions.builder()
                 .setModelPath(modelFile.absolutePath)
-                .setMaxTokens(maxTokens)
+                .setMaxTokens(contextWindow)
                 .setPreferredBackend(backend)
                 
             // Enable vision modality for multimodal models (following Google AI Edge Gallery pattern)
@@ -850,9 +863,10 @@ class MediaPipeInferenceService(private val applicationContext: Context) : Infer
             }
             
             // Check token count and reset session if approaching limit (Gallery approach)
-            val defaultMaxTokens = getMaxTokensForModel(model)
-            val maxTokens = overrideMaxTokens?.coerceAtMost(defaultMaxTokens) ?: defaultMaxTokens
-            Log.d(TAG, "Using token limits - defaultMaxTokens=$defaultMaxTokens overrideMaxTokens=${overrideMaxTokens ?: "null"} effectiveMaxTokens=$maxTokens")
+            // Use the active context window (KV cache) as the true limit, max tokens as generation cap
+            val effectiveContextWindow = overrideContextWindow?.coerceIn(1, model.contextWindowSize) ?: minOf(2048, model.contextWindowSize)
+            val maxTokens = overrideMaxTokens?.coerceIn(1, effectiveContextWindow) ?: effectiveContextWindow
+            Log.d(TAG, "Using token limits - contextWindow=$effectiveContextWindow overrideMaxTokens=${overrideMaxTokens ?: "null"} effectiveMaxTokens=$maxTokens")
             // Reserve ~1/3 for model response; prevent sending input when it eats into reserve
             val currentUserInput = extractCurrentUserMessage(prompt)
             val promptTokens = (currentUserInput.length / 4).coerceAtLeast(1)

@@ -19,7 +19,8 @@ data class ModelConfig(
     val disableAudio: Boolean,
     val nGpuLayers: Int = 999, // layers offloaded to GPU/NPU (GGUF/Nexa SDK only)
     val enableThinking: Boolean = true, // whether thinking/reasoning output is enabled
-    val systemPrompt: String = "" // optional per-model system prompt injected for chat generation
+    val systemPrompt: String = "", // optional per-model system prompt injected for chat generation
+    val contextWindow: Int = 0 // KV cache allocation (context window size); 0 = use model default
 ) {
     fun toJson(): JSONObject {
         val obj = JSONObject()
@@ -35,6 +36,7 @@ data class ModelConfig(
         obj.put("nGpuLayers", nGpuLayers)
         obj.put("enableThinking", enableThinking)
         obj.put("systemPrompt", systemPrompt)
+        obj.put("contextWindow", contextWindow)
         return obj
     }
 
@@ -51,7 +53,8 @@ data class ModelConfig(
                 disableAudio = obj.optBoolean("disableAudio", false),
                 nGpuLayers = obj.optInt("nGpuLayers", 999),
                 enableThinking = obj.optBoolean("enableThinking", true),
-                systemPrompt = obj.optString("systemPrompt", "")
+                systemPrompt = obj.optString("systemPrompt", ""),
+                contextWindow = obj.optInt("contextWindow", 0)
             )
         }
     }

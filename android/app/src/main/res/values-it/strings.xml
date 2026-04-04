@@ -477,7 +477,7 @@
     <string name="translator_auto_detect">Rilevamento automatico</string>
     <string name="translator_translate">Traduci</string>
     <string name="translator_result">Traduzione</string>
-    <string name="translator_requires_gemma3n">Questa funzionalità richiede un modello Gemma-3n. Per favore scaricane uno dalla schermata Modelli.</string>
+    <string name="translator_requires_gemma3n">Questa funzionalità richiede un modello Gemma-3n o Gemma-4 E2B/E4B. Per favore scaricane uno dalla schermata Modelli.</string>
     
     <!-- Transcriber Screen -->
     <string name="transcriber_title">Trascrittore offline</string>
@@ -487,7 +487,7 @@
     <string name="transcriber_result">Trascrizione</string>
     <string name="transcriber_recording">Registrazione...</string>
     <string name="transcriber_stop">Ferma registrazione</string>
-    <string name="transcriber_requires_gemma3n">Questa funzionalità richiede un modello Gemma-3n con supporto audio. Per favore scaricane uno dalla schermata Modelli.</string>
+    <string name="transcriber_requires_gemma3n">Questa funzionalità richiede un modello Gemma-3n o Gemma-4 E2B/E4B con supporto audio. Per favore scaricane uno dalla schermata Modelli.</string>
     
     <!-- Scam Detector Screen -->
     <string name="scam_detector_title">Rilevatore di Truffe</string>
