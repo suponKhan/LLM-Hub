@@ -1048,15 +1048,17 @@ class ChatViewModel(
                 }
             }
 
-            repository.addMessage(
-                chatId = chatId,
-                content = finalMessageContent,
-                isFromUser = true,
-                attachmentPath = processedAttachmentUri?.toString(),
-                attachmentType = attachmentFileInfo?.type?.name,
-                attachmentFileName = attachmentFileInfo?.name,
-                attachmentFileSize = attachmentFileInfo?.size
-            )
+            if (!isRetryAfterContextReset) {
+                repository.addMessage(
+                    chatId = chatId,
+                    content = finalMessageContent,
+                    isFromUser = true,
+                    attachmentPath = processedAttachmentUri?.toString(),
+                    attachmentType = attachmentFileInfo?.type?.name,
+                    attachmentFileName = attachmentFileInfo?.name,
+                    attachmentFileSize = attachmentFileInfo?.size
+                )
+            }
             val userMessageId = _messages.value.lastOrNull { it.isFromUser && it.chatId == chatId }?.id
             
             // Debug logging for file size
@@ -1625,9 +1627,8 @@ inferenceService.loadModel(currentModel!!, _selectedBackend.value, _selectedNpuD
                                         Log.w("ChatViewModel", "No response from GGUF model - context window likely full. Auto-resetting session and retrying...")
                                         triggeredRetry = true
                                         isRetryAfterContextReset = true
-                                        // Delete the placeholder and user message (sendMessage will re-add user message)
+                                        // Delete only the placeholder — keep user message to avoid duplication on retry
                                         repository.deleteMessageById(placeholderId)
-                                        if (userMessageId != null) repository.deleteMessageById(userMessageId)
                                         // Destroy and reload the model to clear KV cache
                                         try {
                                             inferenceService.resetChatSession(chatId)
@@ -1699,9 +1700,8 @@ inferenceService.loadModel(currentModel!!, _selectedBackend.value, _selectedNpuD
                                     Log.w("ChatViewModel", "No response from GGUF model (error path) - context window likely full. Auto-resetting session and retrying...")
                                     triggeredRetry = true
                                     isRetryAfterContextReset = true
-                                    // Delete the placeholder and user message (sendMessage will re-add user message)
+                                    // Delete only the placeholder — keep user message to avoid duplication on retry
                                     repository.deleteMessageById(placeholderId)
-                                    if (userMessageId != null) repository.deleteMessageById(userMessageId)
                                     // Destroy and reload the model to clear KV cache
                                     try {
                                         inferenceService.resetChatSession(chatId)

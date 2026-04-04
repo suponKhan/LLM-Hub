@@ -192,13 +192,15 @@ class WritingAidViewModel(application: Application) : AndroidViewModel(applicati
 
     private fun applyGenerationParametersToService() {
         val model = _selectedModel.value ?: return
+        val effectiveCtx = _selectedMaxTokens.value.coerceIn(1, model.contextWindowSize.coerceAtLeast(1))
         inferenceService.setGenerationParameters(
-            _selectedMaxTokens.value.coerceIn(1, model.contextWindowSize.coerceAtLeast(1)),
-            null,
-            null,
-            null,
-            _selectedNGpuLayers.value,
-            _enableThinking.value
+            maxTokens = effectiveCtx,
+            topK = null,
+            topP = null,
+            temperature = null,
+            nGpuLayers = _selectedNGpuLayers.value,
+            enableThinking = _enableThinking.value,
+            contextWindow = effectiveCtx
         )
     }
 

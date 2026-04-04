@@ -250,11 +250,13 @@ class ScamDetectorViewModel(application: Application) : AndroidViewModel(applica
             try {
                 // Unload any existing model first
                 inferenceService.unloadModel()
+                val effectiveCtx = _selectedMaxTokens.value.coerceIn(1, model.contextWindowSize.coerceAtLeast(1))
                 inferenceService.setGenerationParameters(
-                    _selectedMaxTokens.value.coerceIn(1, model.contextWindowSize.coerceAtLeast(1)),
-                    null, null, null,
-                    _selectedNGpuLayers.value,
-                    _enableThinking.value
+                    maxTokens = effectiveCtx,
+                    topK = null, topP = null, temperature = null,
+                    nGpuLayers = _selectedNGpuLayers.value,
+                    enableThinking = _enableThinking.value,
+                    contextWindow = effectiveCtx
                 )
 
                 // Load the selected model with vision setting

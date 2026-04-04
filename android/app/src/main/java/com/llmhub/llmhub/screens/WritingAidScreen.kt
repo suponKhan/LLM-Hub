@@ -157,7 +157,7 @@ fun WritingAidScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Context Window (litertlm) / Max Tokens (others) slider
+                // Context Window slider
                 Card(
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -172,7 +172,7 @@ fun WritingAidScreen(
                         )
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                             Text(
-                                text = if (isLiteRtLm) stringResource(R.string.context_window_size) else stringResource(R.string.max_tokens),
+                                text = stringResource(R.string.context_window_size),
                                 style = MaterialTheme.typography.bodyMedium
                             )
                             Spacer(modifier = Modifier.width(8.dp))

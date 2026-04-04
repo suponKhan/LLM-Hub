@@ -140,12 +140,13 @@ class CreatorViewModel(
         }
 
         inferenceService.setGenerationParameters(
-            effectiveMaxTokens,
-            null,
-            null,
-            null,
-            _selectedNGpuLayers.value,
-            _enableThinking.value
+            maxTokens = effectiveMaxTokens,
+            topK = null,
+            topP = null,
+            temperature = null,
+            nGpuLayers = _selectedNGpuLayers.value,
+            enableThinking = _enableThinking.value,
+            contextWindow = effectiveMaxTokens
         )
     }
 

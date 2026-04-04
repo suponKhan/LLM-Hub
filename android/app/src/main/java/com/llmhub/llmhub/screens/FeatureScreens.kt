@@ -2086,7 +2086,7 @@ fun ScamDetectorScreen(
                             color = MaterialTheme.colorScheme.primary
                         )
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                            Text(text = stringResource(R.string.max_tokens), style = MaterialTheme.typography.bodyMedium)
+                            Text(text = stringResource(R.string.context_window_size), style = MaterialTheme.typography.bodyMedium)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "$baseMaxTokensCapScam ${stringResource(R.string.max)}",

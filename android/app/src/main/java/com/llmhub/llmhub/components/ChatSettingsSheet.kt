@@ -517,8 +517,8 @@ fun ChatSettingsSheet(
                             Button(
                                 onClick = {
                                     selectedModel?.let { model ->
-                                        // Ensure finalMax respects the effective cap when vision is enabled
-                                        val finalMax = maxTokensValue.coerceIn(1, contextWindowValue)
+                                        // Max tokens slider is gone — use context window as the generation cap
+                                        val finalMax = contextWindowValue.coerceIn(1, baseMaxTokensCap)
                                         val finalCtxWindow = contextWindowValue.coerceIn(1, baseMaxTokensCap)
                                         val backend = if (canSelectAccelerator) {
                                             if (useGpu) LlmInference.Backend.GPU else LlmInference.Backend.CPU
@@ -648,60 +648,6 @@ fun ChatSettingsSheet(
                                 singleLine = true,
                                 modifier = Modifier.width(72.dp)
                             )
-                        }
-
-                        // Max tokens (hidden for litertlm — API has no per-generation token limit)
-                        if (!isLiteRtLm) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.max_tokens),
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "<= ${stringResource(R.string.context_window_size).lowercase()}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Slider(
-                                    value = maxTokensValue.toFloat(),
-                                    onValueChange = {
-                                        val intVal = it.toInt().coerceIn(1, contextWindowValue)
-                                        maxTokensValue = intVal
-                                        maxTokensText = intVal.toString()
-                                    },
-                                    valueRange = 1f..contextWindowValue.toFloat(),
-                                    modifier = Modifier.weight(1f).height(36.dp),
-                                    thumb = {
-                                        SliderDefaults.Thumb(
-                                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                                            thumbSize = androidx.compose.ui.unit.DpSize(24.dp, 24.dp)
-                                        )
-                                    }
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                OutlinedTextField(
-                                    value = maxTokensText,
-                                    onValueChange = { input ->
-                                        val numeric = input.filter { it.isDigit() }
-                                        val intVal = numeric.toIntOrNull() ?: 0
-                                        val clamped = intVal.coerceIn(1, contextWindowValue)
-                                        maxTokensText = clamped.toString()
-                                        maxTokensValue = clamped
-                                    },
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    singleLine = true,
-                                    modifier = Modifier.width(72.dp)
-                                )
-                            }
                         }
 
                         // TopK

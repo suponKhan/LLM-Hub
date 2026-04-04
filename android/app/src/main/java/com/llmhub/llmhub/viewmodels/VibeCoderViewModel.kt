@@ -104,6 +104,9 @@ class VibeCoderViewModel(application: Application) : AndroidViewModel(applicatio
     private var processingJob: Job? = null
     private var streamingAssistantMessageId: String? = null
     private var currentPromptMessageId: String? = null
+    // Chars of chat messages that have already been "forgotten" by a context reset.
+    // Subtracted from the ring so it drops after reset without removing visible messages from UI.
+    private var ringCharOffset = 0
     private val chatSessionStore = mutableMapOf<String, SessionPayload>()
     
     // Available models
@@ -390,6 +393,7 @@ class VibeCoderViewModel(application: Application) : AndroidViewModel(applicatio
         _pendingProposal.value = null
         streamingAssistantMessageId = null
         currentPromptMessageId = null
+        ringCharOffset = 0
         recalculateContextUsage()
         saveSettings()
     }
@@ -585,6 +589,7 @@ class VibeCoderViewModel(application: Application) : AndroidViewModel(applicatio
         streamingAssistantMessageId = null
         _editCheckpoints.value = emptyList()
         _lastUserPrompt.value = null
+        ringCharOffset = 0
         resetActiveInferenceSession()
         recalculateContextUsage()
         persistActiveSession()
@@ -805,12 +810,13 @@ class VibeCoderViewModel(application: Application) : AndroidViewModel(applicatio
         }
 
         inferenceService.setGenerationParameters(
-            effectiveMaxTokens,
-            topK,
-            topP,
-            temperature,
-            _selectedNGpuLayers.value,
-            _enableThinking.value
+            maxTokens = effectiveMaxTokens,
+            topK = topK,
+            topP = topP,
+            temperature = temperature,
+            nGpuLayers = _selectedNGpuLayers.value,
+            enableThinking = _enableThinking.value,
+            contextWindow = effectiveMaxTokens
         )
     }
     
@@ -894,6 +900,17 @@ class VibeCoderViewModel(application: Application) : AndroidViewModel(applicatio
             return
         }
         val normalizedPrompt = prompt.trim()
+
+        // Proactively reset Nexa KV cache at 90% context — keeps all chat messages visible.
+        val needsContextReset = shouldResetSessionBeforeMessage(normalizedPrompt)
+        if (needsContextReset) {
+            // Advance the ring offset to the current message chars so the ring drops back down.
+            // Messages stay in the UI; only the KV cache and ring baseline are reset.
+            ringCharOffset = _chatMessages.value.sumOf { it.text.length }
+            recalculateContextUsage()
+            Log.w("VibeCoderVM", "Context at 90% — resetting ring offset to $ringCharOffset")
+        }
+
         val userMsg = VibeChatMessage(role = "user", text = normalizedPrompt)
         _chatMessages.value = _chatMessages.value + userMsg
         currentPromptMessageId = userMsg.id
@@ -909,6 +926,19 @@ class VibeCoderViewModel(application: Application) : AndroidViewModel(applicatio
             var codeChatId: String? = null
             
             try {
+                // Reset the inference session synchronously (before generation) when context was at 90%.
+                // This clears the Nexa KV cache via destroy+reload so the new generation starts fresh.
+                if (needsContextReset) {
+                    val session = chatSessionStore[_activeChatSessionId.value]
+                    if (session != null) {
+                        val oldChatId = session.inferenceChatId
+                        session.inferenceChatId = "vibe-coder-${UUID.randomUUID()}"
+                        saveSettings()
+                        runCatching { inferenceService.resetChatSession(oldChatId) }
+                            .onFailure { Log.w("VibeCoderVM", "Context reset failed: ${it.message}") }
+                    }
+                }
+
                 val coderMaxTokens = _selectedMaxTokens.value.coerceAtLeast(512)
                 applyGenerationParametersToService(
                     maxTokens = coderMaxTokens,
@@ -1205,14 +1235,15 @@ class VibeCoderViewModel(application: Application) : AndroidViewModel(applicatio
 
     private fun shouldResetSessionBeforeMessage(newPrompt: String): Boolean {
         val model = _selectedModel.value ?: return false
-        val history = _chatMessages.value.joinToString("\n") { "${it.role}: ${it.text}" }
-        val fileContent = _generatedCode.value
-        val estimatedTokens = ((history.length + fileContent.length + newPrompt.length) / 4).coerceAtLeast(0)
         val maxTokens = _selectedMaxTokens.value.coerceAtMost(model.contextWindowSize.coerceAtLeast(1))
-        val reserveForResponse = (maxTokens / 3).coerceAtLeast(256)
-        val tokenThreshold = (maxTokens - reserveForResponse).coerceAtLeast(1)
-        Log.d("VibeCoderVM", "Token check: est=$estimatedTokens threshold=$tokenThreshold reserve=$reserveForResponse max=$maxTokens")
-        return estimatedTokens >= tokenThreshold
+        // Same formula as ring, plus the incoming prompt chars
+        val rawChars = _chatMessages.value.sumOf { it.text.length }
+        val effectiveChars = (rawChars - ringCharOffset).coerceAtLeast(0) +
+                _generatedCode.value.length + newPrompt.length
+        val estimatedTokens = (effectiveChars / 4).coerceAtLeast(0)
+        val threshold = (maxTokens * 0.9).toInt().coerceAtLeast(1)
+        Log.d("VibeCoderVM", "Context pre-check: est=$estimatedTokens threshold=$threshold (90%) max=$maxTokens")
+        return estimatedTokens >= threshold
     }
 
     private fun resetActiveInferenceSession() {
@@ -1234,8 +1265,9 @@ class VibeCoderViewModel(application: Application) : AndroidViewModel(applicatio
         } else {
             _selectedMaxTokens.value.coerceAtLeast(1)
         }
-        val usedChars = _chatMessages.value.sumOf { it.text.length } + _generatedCode.value.length
-        val usedTokens = (usedChars / 4).coerceAtLeast(0)
+        val rawChars = _chatMessages.value.sumOf { it.text.length }
+        val effectiveChars = (rawChars - ringCharOffset).coerceAtLeast(0) + _generatedCode.value.length
+        val usedTokens = (effectiveChars / 4).coerceAtLeast(0)
         val fraction = (usedTokens.toFloat() / maxTokens.toFloat()).coerceIn(0f, 1f)
         _contextUsageFraction.value = fraction
         _contextUsageLabel.value = "${(fraction * 100).toInt()}%"

@@ -66,6 +66,7 @@ class NexaInferenceService @Inject constructor(
     private var currentAudioDisabled: Boolean = false
     
     private var overrideMaxTokens: Int? = null
+    private var overrideContextWindow: Int? = null
     private var overrideTopK: Int? = null
     private var overrideTopP: Float? = null
     private var overrideTemperature: Float? = null
@@ -279,7 +280,7 @@ class NexaInferenceService @Inject constructor(
                     }
                 }
                 
-                val rawCtx = overrideMaxTokens ?: model.contextWindowSize
+        val rawCtx = overrideContextWindow ?: overrideMaxTokens ?: model.contextWindowSize
                 val nCtx = rawCtx.coerceAtMost(MAX_SAFE_CTX)
                 if (rawCtx != nCtx) {
                     Log.w(TAG, "Capped nCtx from $rawCtx to $nCtx to prevent OOM (Device RAM ~${String.format("%.1f", totalRamGb)}GB)")
@@ -348,8 +349,9 @@ class NexaInferenceService @Inject constructor(
 
                 val modelConfig = ModelConfig(
                     nCtx = nCtx,
+                    max_tokens = nCtx,
                     nGpuLayers = gpuLayers,
-                    enable_thinking = isThinkingModelForConfig
+                    enable_thinking = overrideEnableThinking ?: isThinkingModelForConfig
                 )
                 Log.i(
                     TAG,
@@ -700,7 +702,7 @@ class NexaInferenceService @Inject constructor(
             }
         }
         
-        val baseMaxTokens = overrideMaxTokens ?: model.contextWindowSize
+        val baseMaxTokens = overrideContextWindow ?: overrideMaxTokens ?: model.contextWindowSize
         val maxTokensVal = if (isVlmLoaded && !currentVisionDisabled) baseMaxTokens.coerceAtMost(8192) else baseMaxTokens
         val temperatureVal = overrideTemperature ?: 0.7f
         val topKVal = overrideTopK ?: 40
@@ -1452,6 +1454,7 @@ class NexaInferenceService @Inject constructor(
     override fun wasSessionRecentlyReset(chatId: String): Boolean = false
     override fun setGenerationParameters(maxTokens: Int?, topK: Int?, topP: Float?, temperature: Float?, nGpuLayers: Int?, enableThinking: Boolean?, contextWindow: Int?) {
         overrideMaxTokens = maxTokens
+        overrideContextWindow = contextWindow
         overrideTopK = topK
         overrideTopP = topP
         overrideTemperature = temperature
@@ -1461,5 +1464,5 @@ class NexaInferenceService @Inject constructor(
     override fun isVisionCurrentlyDisabled(): Boolean = currentVisionDisabled
     override fun isAudioCurrentlyDisabled(): Boolean = currentAudioDisabled
     override fun isGpuBackendEnabled(): Boolean = currentPreferredBackend == LlmInference.Backend.GPU
-    override fun getEffectiveMaxTokens(model: LLMModel): Int = overrideMaxTokens ?: model.contextWindowSize
+    override fun getEffectiveMaxTokens(model: LLMModel): Int = overrideContextWindow ?: overrideMaxTokens ?: model.contextWindowSize
 }

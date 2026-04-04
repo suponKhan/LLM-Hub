@@ -256,9 +256,7 @@ class LiteRtLmInferenceService(private val applicationContext: Context) : Infere
         contextWindow: Int?
     ) {
         overrideMaxTokens = maxTokens
-        // For litertlm, contextWindow controls the KV cache (EngineConfig.maxNumTokens).
-        // Features pass their value as maxTokens, so fall back to it when contextWindow is not set.
-        overrideContextWindow = contextWindow ?: maxTokens
+        overrideContextWindow = contextWindow
         overrideTopK = topK
         overrideTopP = topP
         overrideTemperature = temperature

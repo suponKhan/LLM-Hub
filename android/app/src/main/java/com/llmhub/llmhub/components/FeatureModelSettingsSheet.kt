@@ -455,10 +455,10 @@ fun FeatureModelSettingsSheet(
                             color = MaterialTheme.colorScheme.primary
                         )
 
-                        // Context window (litertlm) / Max tokens (others)
+                        // Context Window
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                             Text(
-                                text = if (isLiteRtLm) stringResource(R.string.context_window_size) else stringResource(R.string.max_tokens),
+                                text = stringResource(R.string.context_window_size),
                                 style = MaterialTheme.typography.bodyMedium
                             )
                             Spacer(modifier = Modifier.width(8.dp))
