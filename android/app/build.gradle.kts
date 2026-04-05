@@ -25,8 +25,8 @@ android {
         applicationId = "com.llmhub.llmhub"
         minSdk = 27
         targetSdk = 36
-        versionCode = 87
-        versionName = "3.6.3"
+        versionCode = 90
+        versionName = "3.7.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         val hfToken: String = localProperties.getProperty("HF_TOKEN", "")
@@ -364,18 +364,26 @@ if (isBundleBuild) {
     }
 }
 
-// ── Strip ALL assets/npu/ from base module (AAB builds only) ─────────────────
-// npu HTP runtime libs are delivered via :nexa_npu_pack (install-time Play Asset
-// Delivery) for AAB. For APK sideloads, npu stays in base so NPU works normally.
+// ── Strip ALL assets/npu/, cvtbase/, qnnlibs/ from base module (AAB builds only) ──────
+// npu/cvtbase/qnnlibs are delivered via asset packs in AAB; strip from base merged output.
+// outputs.upToDateWhen { false } forces the doLast to always run even when incremental
+// build marks mergeReleaseAssets as UP-TO-DATE, preventing stale cached cvtbase from
+// reaching packageReleaseBundle.
 if (isBundleBuild) {
     tasks.configureEach {
         if (name.startsWith("merge") && name.contains("Assets", ignoreCase = true)) {
+            outputs.upToDateWhen { false }
             doLast {
+                // Delete cvtbase (sd_pack) and qnnlibs (qnn_pack) from base merged assets
+                outputs.files.forEach { outDir ->
+                    outDir.resolve("cvtbase").deleteRecursively()
+                    outDir.resolve("qnnlibs").deleteRecursively()
+                }
                 // Delete everything under npu/ from the base module's merged assets
                 outputs.files.asFileTree.matching { include("npu/**") }
                     .filter { it.isFile }
                     .forEach { f ->
-                        logger.lifecycle("stripNpu: removed ${f.parentFile.name}/${f.name} from base module")
+                        logger.lifecycle("stripBundleAssets: removed ${f.parentFile.name}/${f.name} from base module")
                         f.delete()
                     }
                 // Remove empty npu dirs (deepest first)
@@ -443,8 +451,8 @@ tasks.register("ensureAssetsForApk") {
 
 // Hook into bundle tasks to hide base-module assets that are delivered via asset packs in AAB
 tasks.configureEach {
+    // Restore any previously-renamed source dirs after bundle finishes (success or failure)
     if (name.startsWith("bundle") && name.contains("Release", ignoreCase = true)) {
-        dependsOn("hideAssetsForBundle")
         finalizedBy("restoreAssetsAfterBundle")
     }
     // Hook into assemble tasks to ensure assets are present for APK builds
