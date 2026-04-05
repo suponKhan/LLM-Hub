@@ -82,7 +82,7 @@ fun FeatureModelSettingsSheet(
     var selectedModel by remember { mutableStateOf(initialSelectedModel ?: currentlyLoadedModel ?: availableModels.firstOrNull()) }
 
     val baseMaxTokensCap = remember(selectedModel) {
-        selectedModel?.let { MediaPipeInferenceService.getMaxTokensForModelStatic(it) } ?: 2048
+        selectedModel?.let { MediaPipeInferenceService.getMaxTokensForModelStatic(it) } ?: 4096
     }
     val isLiteRtLm = remember(selectedModel) { selectedModel?.modelFormat == "litertlm" }
     val isPhi4Mini = remember(selectedModel) {

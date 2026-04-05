@@ -117,7 +117,7 @@ class LiteRtLmInferenceService(private val applicationContext: Context) : Infere
 
     override fun getEffectiveMaxTokens(model: LLMModel): Int {
         val contextWindow = overrideContextWindow?.coerceIn(1, model.contextWindowSize)
-            ?: minOf(2048, model.contextWindowSize)
+            ?: model.contextWindowSize
         return overrideMaxTokens?.coerceIn(1, contextWindow) ?: contextWindow
     }
 

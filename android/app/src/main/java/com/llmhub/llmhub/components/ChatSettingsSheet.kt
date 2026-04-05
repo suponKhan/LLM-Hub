@@ -97,10 +97,10 @@ fun ChatSettingsSheet(
     }
     
     // Config state
-    var contextWindowValue by remember { mutableStateOf(minOf(2048, baseMaxTokensCap)) }
-    var contextWindowText by remember { mutableStateOf(minOf(2048, baseMaxTokensCap).toString()) }
-    var maxTokensValue by remember { mutableStateOf(minOf(1024, baseMaxTokensCap)) }
-    var maxTokensText by remember { mutableStateOf(minOf(1024, baseMaxTokensCap).toString()) }
+    var contextWindowValue by remember { mutableStateOf(minOf(4096, baseMaxTokensCap)) }
+    var contextWindowText by remember { mutableStateOf(minOf(4096, baseMaxTokensCap).toString()) }
+    var maxTokensValue by remember { mutableStateOf(minOf(4096, baseMaxTokensCap)) }
+    var maxTokensText by remember { mutableStateOf(minOf(4096, baseMaxTokensCap).toString()) }
     var topK by remember { mutableStateOf(64) }
     var topP by remember { mutableStateOf(0.95f) }
     var temperature by remember { mutableStateOf(1.0f) }
@@ -156,7 +156,7 @@ fun ChatSettingsSheet(
                 val saved = modelPrefs.getModelConfig(model.name)
                 if (saved != null) {
                     // Restore saved context window
-                    val savedCtxWindow = if (saved.contextWindow > 0) saved.contextWindow.coerceIn(1, newBaseCap) else minOf(2048, newBaseCap)
+                    val savedCtxWindow = if (saved.contextWindow > 0) saved.contextWindow.coerceIn(1, newBaseCap) else minOf(4096, newBaseCap)
                     contextWindowValue = savedCtxWindow
                     contextWindowText = savedCtxWindow.toString()
                     // Clamp saved max tokens to context window
@@ -178,10 +178,11 @@ fun ChatSettingsSheet(
                     systemPromptText = saved.systemPrompt
                 } else {
                     // Reset to defaults for new model
-                    val defaultCtx = minOf(2048, newBaseCap)
+                    val effCap = if (selectedModelSupportsVisionInput) minOf(newBaseCap, 8192) else newBaseCap
+                    val defaultCtx = minOf(4096, effCap)
                     contextWindowValue = defaultCtx
                     contextWindowText = defaultCtx.toString()
-                    val defaultMax = minOf(1024, defaultCtx)
+                    val defaultMax = minOf(4096, defaultCtx)
                     maxTokensValue = defaultMax
                     maxTokensText = defaultMax.toString()
                     topK = 64
@@ -196,10 +197,11 @@ fun ChatSettingsSheet(
                 }
             } catch (e: Exception) {
                 // Reset to defaults on error
-                val defaultCtx = minOf(2048, newBaseCap)
+                val effCap = if (selectedModelSupportsVisionInput) minOf(newBaseCap, 8192) else newBaseCap
+                val defaultCtx = minOf(4096, effCap)
                 contextWindowValue = defaultCtx
                 contextWindowText = defaultCtx.toString()
-                val defaultMax = minOf(1024, defaultCtx)
+                val defaultMax = minOf(4096, defaultCtx)
                 maxTokensValue = defaultMax
                 maxTokensText = defaultMax.toString()
                 topK = 64
@@ -874,8 +876,8 @@ fun ChatSettingsSheet(
                                     val newIsGemma3n = model.name.contains("Gemma-3n", ignoreCase = true)
                                     val newIsPhi4Mini = model.name.contains("Phi-4 Mini", ignoreCase = true)
                                     val newDefaultUseGpu = if (newIsPhi4Mini) false else model.supportsGpu
-                                    val defaultCtx = minOf(2048, newMaxTokensCap)
-                                    val defaultMax = minOf(1024, defaultCtx)
+                                    val defaultCtx = minOf(4096, newMaxTokensCap)
+                                    val defaultMax = minOf(4096, defaultCtx)
                                     
                                     contextWindowValue = defaultCtx
                                     contextWindowText = defaultCtx.toString()

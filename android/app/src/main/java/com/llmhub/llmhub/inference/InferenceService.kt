@@ -150,7 +150,7 @@ class MediaPipeInferenceService(private val applicationContext: Context) : Infer
     }
 
     override fun getEffectiveMaxTokens(model: LLMModel): Int {
-        val contextWindow = overrideContextWindow?.coerceIn(1, model.contextWindowSize) ?: minOf(2048, model.contextWindowSize)
+        val contextWindow = overrideContextWindow?.coerceIn(1, model.contextWindowSize) ?: model.contextWindowSize
         return overrideMaxTokens?.coerceIn(1, contextWindow) ?: contextWindow
     }
 
@@ -470,9 +470,7 @@ class MediaPipeInferenceService(private val applicationContext: Context) : Infer
             Log.d(TAG, "Selected backend: $backend for model: ${modelFile.name} ${if (preferredBackend != null) "(user preference)" else "(auto-selected)"}")
             
             // Determine context window (KV cache allocation) and max tokens (generation cap)
-            // Default to min(2048, model max) if user hasn't set a value — avoids OOM on large-window models
-            val safeDefault = minOf(2048, model.contextWindowSize)
-            val contextWindow = overrideContextWindow?.coerceIn(1, model.contextWindowSize) ?: safeDefault
+            val contextWindow = overrideContextWindow?.coerceIn(1, model.contextWindowSize) ?: model.contextWindowSize
 
             Log.d(TAG, "Model configuration:")
             Log.d(TAG, "  - Name: ${model.name}")
@@ -854,7 +852,7 @@ class MediaPipeInferenceService(private val applicationContext: Context) : Infer
             
             // Check token count and reset session if approaching limit (Gallery approach)
             // Use the active context window (KV cache) as the true limit, max tokens as generation cap
-            val effectiveContextWindow = overrideContextWindow?.coerceIn(1, model.contextWindowSize) ?: minOf(2048, model.contextWindowSize)
+            val effectiveContextWindow = overrideContextWindow?.coerceIn(1, model.contextWindowSize) ?: model.contextWindowSize
             val maxTokens = overrideMaxTokens?.coerceIn(1, effectiveContextWindow) ?: effectiveContextWindow
             Log.d(TAG, "Using token limits - contextWindow=$effectiveContextWindow overrideMaxTokens=${overrideMaxTokens ?: "null"} effectiveMaxTokens=$maxTokens")
             // Reserve ~1/3 for model response; prevent sending input when it eats into reserve
