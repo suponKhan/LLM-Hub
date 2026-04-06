@@ -747,8 +747,9 @@ bool LlamaCppTextGeneration::generate_stream(const TextGenerationRequest& reques
     static const std::vector<std::string> STOP_SEQUENCES = {
         "<|im_end|>", "<|eot_id|>", "</s>", "<|end|>", "<|endoftext|>",
         "\n\nUser:", "\n\nHuman:",
-        "<end_of_turn>",   // Gemma3/Gemma4
-        "<start_of_turn>", // Gemma3/Gemma4 - stop if model starts a new turn
+        "<end_of_turn>",      // Gemma3/Gemma4 end-of-turn marker
+        "<start_of_turn>user\n",   // stop if model hallucinates a user turn
+        "<start_of_turn>system\n", // stop if model hallucinates a system turn
     };
 
     // Merge per-request stop sequences with the static ones
@@ -768,6 +769,12 @@ bool LlamaCppTextGeneration::generate_stream(const TextGenerationRequest& reques
 
     std::string partial_utf8_buffer;
     partial_utf8_buffer.reserve(8);
+
+    // Gemma4 echoes "<start_of_turn>model\n" before its actual response content;
+    // accumulate the first few chars and silently strip this preamble if present.
+    static const std::string GEMMA_RESPONSE_PREFIX = "<start_of_turn>model\n";
+    std::string prefix_buf;
+    bool prefix_stripped = false;
 
     int n_cur = batch.n_tokens;
     int tokens_generated = 0;
@@ -799,38 +806,59 @@ bool LlamaCppTextGeneration::generate_stream(const TextGenerationRequest& reques
 
         if (valid_upto > 0) {
             std::string valid_chunk = partial_utf8_buffer.substr(0, valid_upto);
-            stop_window.append(valid_chunk);
             partial_utf8_buffer.erase(0, valid_upto);
 
-            size_t found_stop_pos = std::string::npos;
-            for (const auto& stop_seq : effective_stop_sequences) {
-                size_t pos = stop_window.find(stop_seq);
-                if (pos != std::string::npos) {
-                    if (found_stop_pos == std::string::npos || pos < found_stop_pos) {
-                        found_stop_pos = pos;
+            bool do_stop_check = true;
+            if (!prefix_stripped) {
+                // Accumulate until we have enough data to decide whether
+                // the response starts with the Gemma "<start_of_turn>model\n" preamble.
+                prefix_buf.append(valid_chunk);
+                if (prefix_buf.size() < GEMMA_RESPONSE_PREFIX.size()) {
+                    do_stop_check = false; // still deciding; skip stop checks this round
+                } else {
+                    prefix_stripped = true;
+                    if (prefix_buf.compare(0, GEMMA_RESPONSE_PREFIX.size(), GEMMA_RESPONSE_PREFIX) == 0) {
+                        LOGI("Stripped Gemma '<start_of_turn>model\\n' preamble from response");
+                        prefix_buf.erase(0, GEMMA_RESPONSE_PREFIX.size());
                     }
+                    stop_window.append(prefix_buf);
+                    prefix_buf.clear();
                 }
+            } else {
+                stop_window.append(valid_chunk);
             }
 
-            if (found_stop_pos != std::string::npos) {
-                LOGI("Stop sequence detected");
-                stop_sequence_hit = true;
-                if (found_stop_pos > 0) {
-                    if (!callback(stop_window.substr(0, found_stop_pos))) {
-                        cancel_requested_.store(true);
+            if (do_stop_check) {
+                size_t found_stop_pos = std::string::npos;
+                for (const auto& stop_seq : effective_stop_sequences) {
+                    size_t pos = stop_window.find(stop_seq);
+                    if (pos != std::string::npos) {
+                        if (found_stop_pos == std::string::npos || pos < found_stop_pos) {
+                            found_stop_pos = pos;
+                        }
                     }
                 }
-                break;
-            }
 
-            if (stop_window.size() > MAX_STOP_LEN) {
-                size_t safe_len = stop_window.size() - MAX_STOP_LEN;
-                if (!callback(stop_window.substr(0, safe_len))) {
-                    LOGI("Generation cancelled by callback");
-                    cancel_requested_.store(true);
+                if (found_stop_pos != std::string::npos) {
+                    LOGI("Stop sequence detected");
+                    stop_sequence_hit = true;
+                    if (found_stop_pos > 0) {
+                        if (!callback(stop_window.substr(0, found_stop_pos))) {
+                            cancel_requested_.store(true);
+                        }
+                    }
                     break;
                 }
-                stop_window.erase(0, safe_len);
+
+                if (stop_window.size() > MAX_STOP_LEN) {
+                    size_t safe_len = stop_window.size() - MAX_STOP_LEN;
+                    if (!callback(stop_window.substr(0, safe_len))) {
+                        LOGI("Generation cancelled by callback");
+                        cancel_requested_.store(true);
+                        break;
+                    }
+                    stop_window.erase(0, safe_len);
+                }
             }
         }
 
@@ -844,6 +872,16 @@ bool LlamaCppTextGeneration::generate_stream(const TextGenerationRequest& reques
             LOGE("llama_decode failed during generation");
             decode_failed_ = true;
             break;
+        }
+    }
+
+    // Flush any content still in the preamble detection window (covers very short responses).
+    if (!prefix_stripped && !prefix_buf.empty()) {
+        // If prefix_buf is entirely a leading substring of the preamble, discard it.
+        const bool is_preamble_fragment =
+            GEMMA_RESPONSE_PREFIX.compare(0, prefix_buf.size(), prefix_buf) == 0;
+        if (!is_preamble_fragment) {
+            stop_window = prefix_buf + stop_window;
         }
     }
 
@@ -1049,8 +1087,9 @@ TextGenerationResult LlamaCppTextGeneration::generate_from_context(const TextGen
     static const std::vector<std::string> STOP_SEQUENCES = {
         "<|im_end|>", "<|eot_id|>", "</s>", "<|end|>", "<|endoftext|>",
         "\n\nUser:", "\n\nHuman:",
-        "<end_of_turn>",   // Gemma3/Gemma4
-        "<start_of_turn>", // Gemma3/Gemma4
+        "<end_of_turn>",      // Gemma3/Gemma4 end-of-turn marker
+        "<start_of_turn>user\n",   // stop if model hallucinates a user turn
+        "<start_of_turn>system\n", // stop if model hallucinates a system turn
     };
 
     // Merge per-request stop sequences with the static ones
@@ -1167,6 +1206,16 @@ TextGenerationResult LlamaCppTextGeneration::generate_from_context(const TextGen
 
 
     result.text = generated_text;
+
+    // Strip Gemma "<start_of_turn>model\n" preamble if model echoes it at response start.
+    {
+        static const std::string GEMMA_PFX = "<start_of_turn>model\n";
+        if (result.text.compare(0, GEMMA_PFX.size(), GEMMA_PFX) == 0) {
+            result.text.erase(0, GEMMA_PFX.size());
+            LOGI("generate_from_context: stripped Gemma '<start_of_turn>model\\n' preamble");
+        }
+    }
+
     result.tokens_generated = tokens_generated;
     result.prompt_tokens = n_prompt;
 
