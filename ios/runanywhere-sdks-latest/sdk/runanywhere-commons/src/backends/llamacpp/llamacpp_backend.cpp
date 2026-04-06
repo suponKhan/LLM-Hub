@@ -747,11 +747,19 @@ bool LlamaCppTextGeneration::generate_stream(const TextGenerationRequest& reques
     static const std::vector<std::string> STOP_SEQUENCES = {
         "<|im_end|>", "<|eot_id|>", "</s>", "<|end|>", "<|endoftext|>",
         "\n\nUser:", "\n\nHuman:",
+        "<end_of_turn>",   // Gemma3/Gemma4
+        "<start_of_turn>", // Gemma3/Gemma4 - stop if model starts a new turn
     };
 
-    static const size_t MAX_STOP_LEN = []{
+    // Merge per-request stop sequences with the static ones
+    std::vector<std::string> effective_stop_sequences = STOP_SEQUENCES;
+    for (const auto& s : request.stop_sequences) {
+        if (!s.empty()) effective_stop_sequences.push_back(s);
+    }
+
+    const size_t MAX_STOP_LEN = [&]{
         size_t m = 0;
-        for (const auto& s : STOP_SEQUENCES) m = std::max(m, s.size());
+        for (const auto& s : effective_stop_sequences) m = std::max(m, s.size());
         return m;
     }();
 
@@ -795,7 +803,7 @@ bool LlamaCppTextGeneration::generate_stream(const TextGenerationRequest& reques
             partial_utf8_buffer.erase(0, valid_upto);
 
             size_t found_stop_pos = std::string::npos;
-            for (const auto& stop_seq : STOP_SEQUENCES) {
+            for (const auto& stop_seq : effective_stop_sequences) {
                 size_t pos = stop_window.find(stop_seq);
                 if (pos != std::string::npos) {
                     if (found_stop_pos == std::string::npos || pos < found_stop_pos) {
@@ -1041,11 +1049,19 @@ TextGenerationResult LlamaCppTextGeneration::generate_from_context(const TextGen
     static const std::vector<std::string> STOP_SEQUENCES = {
         "<|im_end|>", "<|eot_id|>", "</s>", "<|end|>", "<|endoftext|>",
         "\n\nUser:", "\n\nHuman:",
+        "<end_of_turn>",   // Gemma3/Gemma4
+        "<start_of_turn>", // Gemma3/Gemma4
     };
 
-    static const size_t MAX_STOP_LEN = []{
+    // Merge per-request stop sequences with the static ones
+    std::vector<std::string> effective_stop_sequences = STOP_SEQUENCES;
+    for (const auto& s : request.stop_sequences) {
+        if (!s.empty()) effective_stop_sequences.push_back(s);
+    }
+
+    const size_t MAX_STOP_LEN = [&]{
         size_t m = 0;
-        for (const auto& s : STOP_SEQUENCES) m = std::max(m, s.size());
+        for (const auto& s : effective_stop_sequences) m = std::max(m, s.size());
         return m;
     }();
 
@@ -1107,7 +1123,7 @@ TextGenerationResult LlamaCppTextGeneration::generate_from_context(const TextGen
             partial_utf8_buffer.erase(0, valid_upto);
 
             size_t found_stop_pos = std::string::npos;
-            for (const auto& stop_seq : STOP_SEQUENCES) {
+            for (const auto& stop_seq : effective_stop_sequences) {
                 const size_t pos = stop_window.find(stop_seq);
                 if (pos != std::string::npos &&
                     (found_stop_pos == std::string::npos || pos < found_stop_pos)) {
