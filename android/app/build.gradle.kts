@@ -264,7 +264,7 @@ dependencies {
     implementation("com.vladsch.flexmark:flexmark-all:0.64.8")
 
     // ONNX Runtime for Android - supports ONNX model inference
-    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.24.1")
+    // implementation("com.microsoft.onnxruntime:onnxruntime-android:1.24.1")
 
     // Nexa SDK for GGUF model support
     // Nexa bundles libonnxruntime.so directly in its AAR (6.5MB) which conflicts with
