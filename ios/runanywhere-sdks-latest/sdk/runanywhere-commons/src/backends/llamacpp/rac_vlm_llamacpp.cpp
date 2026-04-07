@@ -102,6 +102,7 @@ int get_num_threads(int config_threads) {
  */
 enum class VLMModelType {
     Unknown,
+    Gemma4,     // Gemma 4 uses <|turn>role ... <turn|>
     SmolVLM,    // SmolVLM uses "User:" / "Assistant:" format
     Qwen2VL,    // Qwen2-VL uses chatml with <|im_start|>user format
     LLaVA,      // LLaVA uses "USER:" / "ASSISTANT:" format
@@ -128,6 +129,12 @@ VLMModelType detect_vlm_model_type(llama_model* model) {
 
         RAC_LOG_DEBUG(LOG_CAT, "Model name from metadata: %s", name.c_str());
 
+        if (name.find("gemma 4") != std::string::npos ||
+            name.find("gemma4") != std::string::npos) {
+            RAC_LOG_DEBUG(LOG_CAT, "Detected Gemma4 VLM model type from name");
+            return VLMModelType::Gemma4;
+        }
+
         if (name.find("smolvlm") != std::string::npos ||
             name.find("smol") != std::string::npos) {
             RAC_LOG_DEBUG(LOG_CAT, "Detected SmolVLM model type");
@@ -140,6 +147,17 @@ VLMModelType detect_vlm_model_type(llama_model* model) {
         if (name.find("llava") != std::string::npos) {
             RAC_LOG_DEBUG(LOG_CAT, "Detected LLaVA model type");
             return VLMModelType::LLaVA;
+        }
+    }
+
+    char arch_buf[128] = {0};
+    len = llama_model_meta_val_str(model, "general.architecture", arch_buf, sizeof(arch_buf));
+    if (len > 0) {
+        std::string arch(arch_buf);
+        for (auto& c : arch) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        if (arch.find("gemma4") != std::string::npos) {
+            RAC_LOG_DEBUG(LOG_CAT, "Detected Gemma4 VLM model type from architecture");
+            return VLMModelType::Gemma4;
         }
     }
 
@@ -172,7 +190,15 @@ std::string format_vlm_prompt_with_template(llama_model* model, const std::strin
     // Build user content with image marker if present
     std::string user_content;
     if (has_image) {
-        user_content = std::string(image_marker) + user_prompt;
+        if (model_type == VLMModelType::Gemma4) {
+            user_content = user_prompt;
+            if (!user_content.empty()) {
+                user_content += "\n";
+            }
+            user_content += "<|image|>";
+        } else {
+            user_content = std::string(image_marker) + user_prompt;
+        }
     } else {
         user_content = user_prompt;
     }
@@ -181,6 +207,21 @@ std::string format_vlm_prompt_with_template(llama_model* model, const std::strin
     const char* effective_system = (system_prompt && system_prompt[0] != '\0') ? system_prompt : nullptr;
     if (!effective_system && model_type == VLMModelType::Qwen2VL) {
         effective_system = "You are a helpful assistant.";
+    }
+
+    if (model_type == VLMModelType::Gemma4) {
+        std::string formatted;
+        if (effective_system) {
+            formatted += "<|turn>system\n";
+            formatted += effective_system;
+            formatted += "<turn|>\n";
+        }
+        formatted += "<|turn>user\n";
+        formatted += user_content;
+        formatted += "<turn|>\n<|turn>model\n";
+        RAC_LOG_DEBUG(LOG_CAT, "Gemma4-formatted VLM prompt (%d chars): %s",
+                      (int)formatted.length(), formatted.c_str());
+        return formatted;
     }
 
     // Get the model's chat template
@@ -281,6 +322,12 @@ std::string format_vlm_prompt(VLMModelType model_type, const std::string& user_p
             formatted = "<|im_start|>User: ";
             formatted += user_content;
             formatted += " \nAssistant:";
+            break;
+
+        case VLMModelType::Gemma4:
+            formatted = "<|turn>user\n";
+            formatted += user_content;
+            formatted += "<turn|>\n<|turn>model\n";
             break;
 
         case VLMModelType::Qwen2VL:

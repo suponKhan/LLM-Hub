@@ -675,9 +675,9 @@ extern "C" rac_result_t rac_vlm_component_process_stream(
     int64_t total_time_ms = total_duration.count();
 
     rac_vlm_result_t final_result = {};
-    // Use cleaned_text (special tokens stripped) for the final result.
-    // Fall back to full_text if no cleaned tokens were produced.
-    const std::string& result_text = ctx.cleaned_text.empty() ? ctx.full_text : ctx.cleaned_text;
+    // Use cleaned_text for the final result. Do not fall back to raw full_text,
+    // because it may contain only control tokens like <|im_end|> or <turn|>.
+    const std::string& result_text = ctx.cleaned_text;
     final_result.text = strdup(result_text.c_str());
     final_result.prompt_tokens = ctx.prompt_tokens;
     final_result.completion_tokens = estimate_tokens(result_text.c_str());
